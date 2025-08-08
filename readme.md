@@ -22,7 +22,7 @@ Think of closures like:
 
 ---
 
-## **2. Your `adder()` example**
+## **2. The `adder()` example**
 
 ```go
 func adder() func() int {
