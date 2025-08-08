@@ -128,3 +128,116 @@ fmt.Println(multiplier(3)) // product = 10 * 3 = 30
 * **Encapsulation**: we hide variables from the outside world but keep them accessible to the inner function.
 
 ---
+
+## **1. What is Recursion?**
+
+Recursion is when a function **calls itself**, either **directly** or **indirectly**, to solve a problem.
+
+A recursive function:
+
+1. Has a **base case** — a condition where it stops calling itself.
+2. Has a **recursive case** — where it calls itself with smaller/simpler input.
+
+---
+
+### **General Syntax in Go**
+
+```go
+func functionName(args) returnType {
+    if baseCondition {
+        return baseValue
+    }
+    // recursive case
+    return functionName(smallerArgs)
+}
+```
+
+---
+
+## **2. Example — Factorial**
+
+Mathematically:
+
+```
+n! = n × (n-1) × (n-2) × ... × 1
+0! = 1 (base case)
+```
+
+**In Go:**
+
+```go
+package main
+
+import "fmt"
+
+func factorial(n int) int {
+    if n == 0 {
+        return 1 // base case
+    }
+    return n * factorial(n-1) // recursive call
+}
+
+func main() {
+    fmt.Println(factorial(5)) // Output: 120
+}
+```
+
+**How it works:**
+
+```
+factorial(5) → 5 * factorial(4)
+factorial(4) → 4 * factorial(3)
+factorial(3) → 3 * factorial(2)
+factorial(2) → 2 * factorial(1)
+factorial(1) → 1 * factorial(0)
+factorial(0) → 1  (base case reached)
+
+Now it returns:
+5 * 4 * 3 * 2 * 1 = 120
+```
+
+---
+
+## **3. Example — Fibonacci**
+
+Fibonacci sequence:
+
+```
+0, 1, 1, 2, 3, 5, 8, ...
+fib(n) = fib(n-1) + fib(n-2)
+```
+
+**In Go:**
+
+```go
+func fibonacci(n int) int {
+    if n <= 1 {
+        return n // base cases: fib(0)=0, fib(1)=1
+    }
+    return fibonacci(n-1) + fibonacci(n-2) // recursive case
+}
+```
+
+---
+
+## **4. Important Points in Go Recursion**
+
+* **Base case is mandatory** — without it, recursion runs forever and crashes with a stack overflow.
+* Go optimizes tail recursion *sometimes*, but not as aggressively as some languages (like Scheme).
+* Recursion is more readable for problems like:
+
+  * Tree traversal
+  * Divide and conquer algorithms
+  * Mathematical definitions
+* But **iteration is often faster** in Go due to lower function call overhead.
+
+---
+
+## **5. Stack vs Heap in Recursion**
+
+* Every recursive call adds a **stack frame** (variables, return address).
+* Deep recursion can cause **stack overflow** if too many calls happen before hitting the base case.
+* That’s why we must ensure **small inputs progress toward the base case**.
+
+---
+
