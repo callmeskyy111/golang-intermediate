@@ -1,7 +1,3 @@
-Let’s go step-by-step and unpack **closures in Go** first, then break down **exactly what’s happening** in our code snippets.
-
----
-
 ## **1. What is a Closure in Go?**
 
 In Go, a **closure** is a function value that **captures variables from the scope in which it was defined**, even after that scope has finished executing.
