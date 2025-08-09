@@ -453,3 +453,518 @@ Here’s the benchmark result for simulating a large struct in Python to compare
 * When we pass them **by pointer** (e.g., `*MyStruct`), we’re only passing an **8-byte memory address**, so it’s much **faster** and avoids extra memory allocations.
 * This is exactly why in real-world Go projects, for large structs, functions often take `*Struct` instead of `Struct`.
 ---
+
+## **1️⃣ What is a String in Go?**
+
+In Go:
+
+```go
+str := "Hello"
+```
+
+* A **string** is **immutable** — we cannot change its contents once created.
+* Internally, a `string` is just a **read-only slice of bytes**:
+
+  * **Pointer to the underlying byte array**
+  * **Length of the string**
+
+We can visualize:
+
+```
+"Hello"
+[Pointer] ───▶ [72 101 108 108 111]  // ASCII byte values
+Length = 5
+```
+
+📌 **Key points:**
+
+* Strings are stored as **UTF-8 encoded bytes**.
+* Since UTF-8 can take 1–4 bytes per character, indexing a string directly (`str[i]`) gives **bytes**, **not characters**.
+
+---
+
+## **2️⃣ UTF-8 and Why `str[i]` Might Not Work for All Characters**
+
+Example:
+
+```go
+str := "Hé"
+fmt.Println(len(str))  // 3
+fmt.Println(str[0])    // 72 ('H')
+fmt.Println(str[1])    // 195 (part of 'é')
+fmt.Println(str[2])    // 169 (rest of 'é')
+```
+
+Here, `"é"` takes **2 bytes** (`0xC3 0xA9`), so:
+
+* Index `1` gives the **first byte** of `é`, not the whole character.
+
+---
+
+## **3️⃣ What is a Rune in Go?**
+
+* A **rune** is just an alias for `int32` in Go.
+* It represents a **Unicode code point** — the numeric value of a character.
+* Unlike a byte, a rune **can store the entire character**, even if it’s multi-byte in UTF-8.
+
+Example:
+
+```go
+var r rune = 'é'
+fmt.Println(r)         // 233 (Unicode code point)
+fmt.Printf("%c\n", r)  // é
+```
+
+---
+
+## **4️⃣ Converting Strings to Runes**
+
+If we want to process actual **characters** instead of raw bytes:
+
+```go
+str := "Hé😊"
+runes := []rune(str)
+fmt.Println(len(runes)) // 3 (characters)
+fmt.Println(runes)      // [72 233 128522]
+```
+
+Here:
+
+* `"H"` → `72`
+* `"é"` → `233`
+* `"😊"` → `128522` (U+1F60A)
+
+---
+
+## **5️⃣ Iterating Over a String Correctly**
+
+🔴 **Wrong way** (byte by byte):
+
+```go
+for i := 0; i < len(str); i++ {
+    fmt.Printf("%c ", str[i]) // May print broken chars for multi-byte
+}
+```
+
+✅ **Correct way** (range over runes):
+
+```go
+for i, r := range str {
+    fmt.Printf("Index %d: %c\n", i, r)
+}
+```
+
+* `range` automatically decodes UTF-8 into runes.
+* `i` will be the **byte index**, not rune index.
+
+---
+
+## **6️⃣ Memory & Performance Notes**
+
+| Type     | Size     | Meaning                            | Use Case                    |
+| -------- | -------- | ---------------------------------- | --------------------------- |
+| `byte`   | 1 byte   | ASCII value / raw byte             | Low-level byte handling     |
+| `rune`   | 4 bytes  | Unicode code point (UTF-8 decoded) | Proper character handling   |
+| `string` | 16 bytes | Read-only byte slice (pointer+len) | Storing immutable text data |
+
+* Strings are **immutable**, so modifying them means creating a **new string**.
+* Runes are stored in UTF-8 form inside strings, so multi-byte characters are **not** directly indexable.
+
+---
+
+## **7️⃣ Real-world Example**
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    str := "Go💙"
+
+    fmt.Println("Length in bytes:", len(str))       // 6
+    fmt.Println("Length in runes:", len([]rune(str))) // 3
+
+    fmt.Println("\nIterating over runes:")
+    for i, r := range str {
+        fmt.Printf("Byte index: %d, Rune: %c, CodePoint: %U\n", i, r, r)
+    }
+}
+```
+
+**Output:**
+
+```
+Length in bytes: 6
+Length in runes: 3
+
+Iterating over runes:
+Byte index: 0, Rune: G, CodePoint: U+0047
+Byte index: 1, Rune: o, CodePoint: U+006F
+Byte index: 2, Rune: 💙, CodePoint: U+1F499
+```
+
+---
+
+✅ **In short:**
+
+* **String** = Immutable UTF-8 bytes.
+* **Rune** = Unicode code point (`int32`).
+* Use `[]byte` for raw byte processing, `[]rune` for character-safe processing.
+* Always remember UTF-8 characters can be multi-byte — `str[i]` is not always a full character.
+
+---
+
+## **1️⃣ What Are Formatting Verbs?**
+
+In Go, **formatting verbs** are special placeholders we use inside `fmt` functions like `fmt.Printf`, `fmt.Sprintf`, etc., to control **how data is printed**.
+
+Example:
+
+```go
+name := "Skyy"
+age := 29
+fmt.Printf("Name: %s, Age: %d\n", name, age)
+```
+
+Output:
+
+```
+Name: Skyy, Age: 29
+```
+
+Here:
+
+* `%s` → prints a string
+* `%d` → prints a decimal integer
+
+---
+
+## **2️⃣ Common Categories of Formatting Verbs**
+
+Let’s break them down:
+
+---
+
+### **A. General Verbs**
+
+| Verb  | Meaning                                     |
+| ----- | ------------------------------------------- |
+| `%v`  | Default format (auto-chooses based on type) |
+| `%+v` | Like `%v`, but with struct field names      |
+| `%#v` | Go syntax representation of the value       |
+| `%T`  | Type of the value                           |
+| `%%`  | Literal `%` character                       |
+
+Example:
+
+```go
+type Person struct {
+    Name string
+    Age  int
+}
+p := Person{"Alice", 30}
+
+fmt.Printf("%v\n", p)   // {Alice 30}
+fmt.Printf("%+v\n", p)  // {Name:Alice Age:30}
+fmt.Printf("%#v\n", p)  // main.Person{Name:"Alice", Age:30}
+fmt.Printf("%T\n", p)   // main.Person
+fmt.Printf("%%\n")      // %
+```
+
+---
+
+### **B. Boolean**
+
+| Verb | Meaning       |
+| ---- | ------------- |
+| `%t` | true or false |
+
+```go
+fmt.Printf("%t\n", true) // true
+```
+
+---
+
+### **C. Integer**
+
+| Verb | Meaning                             |
+| ---- | ----------------------------------- |
+| `%d` | Decimal (base 10)                   |
+| `%b` | Binary                              |
+| `%o` | Octal                               |
+| `%x` | Hexadecimal (lowercase)             |
+| `%X` | Hexadecimal (uppercase)             |
+| `%c` | Character (from Unicode code point) |
+| `%q` | Quoted character literal            |
+
+Example:
+
+```go
+n := 65
+fmt.Printf("%d\n", n)  // 65
+fmt.Printf("%b\n", n)  // 1000001
+fmt.Printf("%o\n", n)  // 101
+fmt.Printf("%x\n", n)  // 41
+fmt.Printf("%X\n", n)  // 41
+fmt.Printf("%c\n", n)  // A
+fmt.Printf("%q\n", n)  // 'A'
+```
+
+---
+
+### **D. Floating Point & Complex Numbers**
+
+| Verb | Meaning                                 |
+| ---- | --------------------------------------- |
+| `%f` | Decimal point, no exponent              |
+| `%F` | Same as `%f`                            |
+| `%e` | Scientific notation (e.g., `1.23e+03`)  |
+| `%E` | Scientific notation (uppercase)         |
+| `%g` | `%e` or `%f`, whichever is more compact |
+| `%G` | `%E` or `%F`, whichever is more compact |
+| `%x` | Hexadecimal fraction (lowercase)        |
+| `%X` | Hexadecimal fraction (uppercase)        |
+
+Example:
+
+```go
+pi := 3.1415926535
+fmt.Printf("%f\n", pi)  // 3.141593
+fmt.Printf("%.2f\n", pi) // 3.14
+fmt.Printf("%e\n", pi)  // 3.141593e+00
+fmt.Printf("%g\n", pi)  // 3.14159
+```
+
+---
+
+### **E. String & Slice of Bytes**
+
+| Verb | Meaning                          |
+| ---- | -------------------------------- |
+| `%s` | Plain string                     |
+| `%q` | Double-quoted string (Go syntax) |
+| `%x` | Hexadecimal (lowercase)          |
+| `%X` | Hexadecimal (uppercase)          |
+
+Example:
+
+```go
+s := "GoLang"
+fmt.Printf("%s\n", s)  // GoLang
+fmt.Printf("%q\n", s)  // "GoLang"
+fmt.Printf("%x\n", s)  // 476f4c616e67
+fmt.Printf("%X\n", s)  // 476F4C616E67
+```
+
+---
+
+### **F. Pointer**
+
+| Verb | Meaning        |
+| ---- | -------------- |
+| `%p` | Pointer in hex |
+
+Example:
+
+```go
+x := 42
+fmt.Printf("%p\n", &x) // e.g., 0xc000014090
+```
+
+---
+
+## **3️⃣ Width, Precision, and Flags**
+
+We can fine-tune formatting:
+
+* **Width**: Minimum number of characters (`%6d` → pad with spaces if less than 6 digits)
+* **Precision**: Digits after decimal for floats (`%.2f` → 2 decimal places)
+* **Flags**:
+
+  * `-` → Left-justify
+  * `+` → Always show sign
+  * `0` → Pad with zeros
+
+Example:
+
+```go
+n := 42
+pi := 3.14159
+
+fmt.Printf("|%6d|\n", n)    // |    42|
+fmt.Printf("|%-6d|\n", n)   // |42    |
+fmt.Printf("|%06d|\n", n)   // |000042|
+fmt.Printf("%.2f\n", pi)    // 3.14
+fmt.Printf("%+f\n", pi)     // +3.141590
+```
+
+---
+
+## **4️⃣ Summary Table of Most Common Verbs**
+
+| Verb        | Usage                   |
+| ----------- | ----------------------- |
+| `%v`        | Default value           |
+| `%+v`       | Struct with field names |
+| `%#v`       | Go syntax               |
+| `%T`        | Type                    |
+| `%t`        | Boolean                 |
+| `%d`        | Decimal integer         |
+| `%b`        | Binary                  |
+| `%o`        | Octal                   |
+| `%x` / `%X` | Hexadecimal             |
+| `%c`        | Unicode character       |
+| `%q`        | Quoted string/char      |
+| `%f`        | Decimal float           |
+| `%e` / `%E` | Scientific notation     |
+| `%g` / `%G` | Compact float           |
+| `%p`        | Pointer address         |
+
+---
+
+### **String Comparison in GoLang** (Lexicographical Order)
+
+In GoLang, when we compare two strings using relational operators (`<`, `>`, `==`, etc.), the comparison is done **lexicographically** — meaning it follows the order of Unicode code points, very similar to how words are sorted in a dictionary.
+
+#### **How It Works**
+
+* Go compares strings **byte by byte**, starting from the first character of both strings.
+* It uses the **Unicode code point** values (UTF-8 encoded) for comparison.
+* The comparison stops as soon as it finds the first differing byte between the two strings.
+* If all compared characters are equal and the strings are of different lengths, the shorter string is considered "less" than the longer one.
+
+---
+
+#### **Example**
+
+```go
+str1 := "Apple 🍎"
+str2 := "Banana 🍌"
+str3 := "App 📱"
+str4 := "ab 🔤"
+
+fmt.Println(str1 < str2) // true
+fmt.Println(str3 < str1) // true
+fmt.Println(str4 < str1) // false
+```
+
+**Step-by-step reasoning:**
+
+1. `"Apple 🍎" < "Banana 🍌"` → We compare `'A'` (65) with `'B'` (66). Since `65 < 66`, result is `true`.
+2. `"App 📱" < "Apple 🍎"` → First three characters `"App"` match. Next, space `' '` (32) is less than `'l'` (108), so result is `true`.
+3. `"ab 🔤" < "Apple 🍎"` → First characters: `'a'` (97) vs `'A'` (65). Since `97 > 65`, result is `false`.
+
+---
+
+💡 **Important Notes:**
+
+* Go is **case-sensitive** in string comparisons because Unicode code points for uppercase and lowercase letters are different.
+* Emojis and non-ASCII characters also follow their Unicode code point order.
+* If we want case-insensitive comparison, we can use functions from the `strings` package like `strings.EqualFold()`.
+
+---
+
+Here’s our **Go Formatting Verbs Cheat Sheet** so we can quickly reference them whenever we print or format values in Go.
+We’ll group them by category for clarity.
+
+---
+
+## **📌 1. General Verbs**
+
+| Verb  | Meaning                  | Example Output                  |
+| ----- | ------------------------ | ------------------------------- |
+| `%v`  | Default format           | `fmt.Printf("%v", 123)` → `123` |
+| `%+v` | Struct with field names  | `"{Name:Skyy Age:29}"`          |
+| `%#v` | Go-syntax representation | `"[]int{1, 2, 3}"`              |
+| `%T`  | Type of the value        | `"int"`, `"string"`             |
+| `%%`  | Literal percent sign     | `"50%"`                         |
+
+---
+
+## **📌 2. Boolean**
+
+| Verb | Meaning           | Example  |
+| ---- | ----------------- | -------- |
+| `%t` | `true` or `false` | `"true"` |
+
+---
+
+## **📌 3. Integer**
+
+| Verb | Meaning                   | Example      |
+| ---- | ------------------------- | ------------ |
+| `%b` | Base 2 (binary)           | `1010`       |
+| `%c` | Character from code point | `'A'` for 65 |
+| `%d` | Base 10 (decimal)         | `123`        |
+| `%o` | Base 8 (octal)            | `173`        |
+| `%q` | Quoted character          | `'A'`        |
+| `%x` | Base 16 lowercase         | `7b`         |
+| `%X` | Base 16 uppercase         | `7B`         |
+| `%U` | Unicode format            | `U+0041`     |
+
+---
+
+## **📌 4. Floating-Point & Complex Numbers**
+
+| Verb        | Meaning                                            | Example      |
+| ----------- | -------------------------------------------------- | ------------ |
+| `%b`        | Exponent as power of two                           | `132p-2`     |
+| `%e`        | Scientific notation (lowercase)                    | `1.23e+03`   |
+| `%E`        | Scientific notation (uppercase)                    | `1.23E+03`   |
+| `%f` / `%F` | Decimal point, no exponent                         | `123.456000` |
+| `%g`        | Compact representation (smallest between %e or %f) | `1.23`       |
+| `%G`        | Compact representation (%E or %F)                  | `1.23`       |
+
+---
+
+## **📌 5. String & Slice of Bytes**
+
+| Verb | Meaning                   | Example       |
+| ---- | ------------------------- | ------------- |
+| `%s` | Plain string              | `"Hello"`     |
+| `%q` | Quoted string (Go syntax) | `"\"Hello\""` |
+| `%x` | Hexadecimal (lowercase)   | `68656c6c6f`  |
+| `%X` | Hexadecimal (uppercase)   | `68656C6C6F`  |
+
+---
+
+## **📌 6. Pointer**
+
+| Verb | Meaning               | Example        |
+| ---- | --------------------- | -------------- |
+| `%p` | Pointer address (hex) | `0xc0000140a0` |
+
+---
+
+## **📌 7. Width & Precision**
+
+* **Width**: Minimum number of characters to print (pads with spaces by default)
+
+  ```go
+  fmt.Printf("|%6d|", 45) // |    45|
+  ```
+* **Precision**: Digits after decimal for floats / max chars for strings
+
+  ```go
+  fmt.Printf("|%.2f|", 3.14159) // |3.14|
+  fmt.Printf("|%.3s|", "Golang") // |Gol|
+  ```
+* **Width + Precision**:
+
+  ```go
+  fmt.Printf("|%6.2f|", 3.14159) // |  3.14|
+  ```
+
+---
+
+## **📌 8. Flags**
+
+| Flag | Meaning                                    | Example             |
+| ---- | ------------------------------------------ | ------------------- |
+| `-`  | Left align                                 | `%-6d` → `"45    "` |
+| `+`  | Always show sign                           | `%+d` → `+45`       |
+| `0`  | Pad with zeros                             | `%06d` → `000045`   |
+| `#`  | Alternate form (e.g., `0x` prefix for hex) | `%#x` → `0x7b`      |
+
+---
