@@ -968,3 +968,314 @@ We’ll group them by category for clarity.
 | `#`  | Alternate form (e.g., `0x` prefix for hex) | `%#x` → `0x7b`      |
 
 ---
+
+Let’s dive into the **`fmt` package** in Go and understand it from our perspective as a team learning Golang deeply.
+
+---
+
+## **1. Overview of `fmt`**
+
+The **`fmt` package** in Go (short for *format*) is part of Go’s standard library and is used for **formatted I/O** — meaning it helps us print to the console, read from input, and format data into strings.
+
+It’s somewhat similar to:
+
+* `printf` / `scanf` in C
+* `console.log` + `String.format` combined in JavaScript/Java
+
+The `fmt` package covers:
+
+* **Printing** data to the console or other outputs
+* **Formatting** data into strings
+* **Scanning** data from inputs (stdin, strings, etc.)
+
+---
+
+## **2. Three Main Groups of Functions**
+
+### **A. Printing Functions**
+
+These are for output (console or any writer).
+
+| Function                                                        | Description                                                      |
+| --------------------------------------------------------------- | ---------------------------------------------------------------- |
+| **`fmt.Print(a ...interface{})`**                               | Prints arguments in their default format (no newline).           |
+| **`fmt.Println(a ...interface{})`**                             | Prints arguments separated by spaces, then adds a newline.       |
+| **`fmt.Printf(format string, a ...interface{})`**               | Prints using a **format string** with verbs like `%d`, `%s`.     |
+| **`fmt.Fprint(w io.Writer, a ...interface{})`**                 | Prints to any `io.Writer` (like a file, buffer) without newline. |
+| **`fmt.Fprintln(w io.Writer, a ...interface{})`**               | Prints to `io.Writer` with newline.                              |
+| **`fmt.Fprintf(w io.Writer, format string, a ...interface{})`** | Prints formatted string to `io.Writer`.                          |
+
+---
+
+### **B. Formatting into Strings**
+
+Instead of printing to the console, these return the formatted data as a **string**.
+
+| Function                                    | Description                                         |
+| ------------------------------------------- | --------------------------------------------------- |
+| **`fmt.Sprint(a ...interface{})`**          | Returns a string with arguments in default format.  |
+| **`fmt.Sprintln(a ...interface{})`**        | Returns string with space-separated args + newline. |
+| **`fmt.Sprintf(format, a ...interface{})`** | Returns formatted string with format verbs.         |
+
+Example:
+
+```go
+name := "Bruce"
+age := 29
+msg := fmt.Sprintf("Name: %s, Age: %d", name, age)
+fmt.Println(msg) // Name: Bruce, Age: 29
+```
+
+---
+
+### **C. Scanning (Reading Input)**
+
+Used for reading values from input.
+
+| Function                                                       | Description                                                 |
+| -------------------------------------------------------------- | ----------------------------------------------------------- |
+| **`fmt.Scan(a ...interface{})`**                               | Reads space-separated values from **stdin** into variables. |
+| **`fmt.Scanln(a ...interface{})`**                             | Like `Scan` but stops at newline.                           |
+| **`fmt.Scanf(format string, a ...interface{})`**               | Reads input in a **specific format**.                       |
+| **`fmt.Fscan(r io.Reader, a ...interface{})`**                 | Reads from any `io.Reader`.                                 |
+| **`fmt.Fscanf(r io.Reader, format string, a ...interface{})`** | Reads from `io.Reader` using a format string.               |
+| **`fmt.Sscan(str string, a ...interface{})`**                  | Reads from a string into variables.                         |
+| **`fmt.Sscanf(str string, format string, a ...interface{})`**  | Reads from a string with specific format.                   |
+
+Example:
+
+```go
+var name string
+var age int
+fmt.Scan(&name, &age) // Input: Bruce 29
+fmt.Println(name, age) // Bruce 29
+```
+
+---
+
+## **3. Formatting Verbs in `fmt.Printf`**
+
+We already made a **big cheat sheet** earlier, but here’s the overview:
+
+### **General:**
+
+* `%v` → default format
+* `%#v` → Go-syntax representation
+* `%T` → type of value
+* `%%` → prints a literal `%`
+
+### **Integers:**
+
+* `%d` → decimal
+* `%+d` → decimal with sign
+* `%b` → binary
+* `%o` / `%O` → octal
+* `%x` / `%X` → hexadecimal
+
+### **Strings & Chars:**
+
+* `%s` → plain string
+* `%q` → quoted string
+* `%x` → hex representation
+* `%c` → character
+
+### **Booleans:**
+
+* `%t` → `true` / `false`
+
+### **Floats:**
+
+* `%f` → decimal (fixed-point)
+* `%e` / `%E` → scientific notation
+* `%g` / `%G` → compact
+
+---
+
+## **4. Special Features**
+
+* **Width & Precision Control**
+
+```go
+fmt.Printf("%6.2f", 9.1) // "  9.10" → width=6, precision=2
+```
+
+* **Left / Right alignment**
+
+```go
+fmt.Printf("%-6s", "Hi") // "Hi    "
+```
+
+* **Zero Padding**
+
+```go
+fmt.Printf("%04d", 7) // 0007
+```
+
+---
+
+## **5. Why `fmt` is Important in Go**
+
+* We control **how** values are displayed.
+* We can **format output** exactly as needed (important for logs, reports, etc.).
+* We can **scan** and parse data from various sources.
+* It works uniformly across types due to **Go’s interface system** (`interface{}`).
+
+---
+
+Let’s make our **Go `fmt` Master Sheet** with **all differences** clearly laid out so we can grab it any time without thinking.
+
+---
+
+# 📝 **Go `fmt` Master Sheet**
+
+*(Printing, Formatting, and Scanning — with Differences)*
+
+---
+
+## **1. PRINTING FAMILY**
+
+These **output directly** (usually to `stdout` unless we use `F*` variants).
+
+| Function                        | Outputs to                       | Newline? | Formatting?                      | Returns            |
+| ------------------------------- | -------------------------------- | -------- | -------------------------------- | ------------------ |
+| `fmt.Print(a ...interface{})`   | Stdout                           | ❌        | Default format                   | (n int, err error) |
+| `fmt.Println(a ...interface{})` | Stdout                           | ✅        | Default format (space-separated) | (n int, err error) |
+| `fmt.Printf(format, a...)`      | Stdout                           | ❌        | ✅ Format verbs                   | (n int, err error) |
+| `fmt.Fprint(w, a...)`           | `io.Writer` (file, buffer, etc.) | ❌        | Default format                   | (n int, err error) |
+| `fmt.Fprintln(w, a...)`         | `io.Writer`                      | ✅        | Default format                   | (n int, err error) |
+| `fmt.Fprintf(w, format, a...)`  | `io.Writer`                      | ❌        | ✅ Format verbs                   | (n int, err error) |
+
+**Example:**
+
+```go
+fmt.Print("Hi")            // Hi
+fmt.Println("Hi")          // Hi\n
+fmt.Printf("%s %d", "Hi", 5) // Hi 5
+```
+
+---
+
+## **2. STRING-FORMATTING FAMILY**
+
+These **do not print** — they return a string.
+
+| Function                    | Newline? | Formatting?    | Returns |
+| --------------------------- | -------- | -------------- | ------- |
+| `fmt.Sprint(a...)`          | ❌        | Default        | string  |
+| `fmt.Sprintln(a...)`        | ✅        | Default        | string  |
+| `fmt.Sprintf(format, a...)` | ❌        | ✅ Format verbs | string  |
+
+**Example:**
+
+```go
+msg := fmt.Sprintf("User: %s, Age: %d", "Bruce", 29)
+fmt.Println(msg) // User: Bruce, Age: 29
+```
+
+---
+
+## **3. SCANNING FAMILY**
+
+These **read** values into variables.
+
+| Function                         | Reads from | Stops at      | Formatting? | Returns            |
+| -------------------------------- | ---------- | ------------- | ----------- | ------------------ |
+| `fmt.Scan(&a...)`                | stdin      | Space/newline | ❌           | (n int, err error) |
+| `fmt.Scanln(&a...)`              | stdin      | Newline       | ❌           | (n int, err error) |
+| `fmt.Scanf(format, &a...)`       | stdin      | Format rules  | ✅           | (n int, err error) |
+| `fmt.Fscan(r, &a...)`            | io.Reader  | Space/newline | ❌           | (n int, err error) |
+| `fmt.Fscanf(r, format, &a...)`   | io.Reader  | Format rules  | ✅           | (n int, err error) |
+| `fmt.Sscan(str, &a...)`          | string     | Space/newline | ❌           | (n int, err error) |
+| `fmt.Sscanf(str, format, &a...)` | string     | Format rules  | ✅           | (n int, err error) |
+
+**Example:**
+
+```go
+var name string
+var age int
+fmt.Scan(&name, &age) // Input: Bruce 29
+fmt.Println(name, age) // Bruce 29
+```
+
+---
+
+## **4. FORMAT VERBS CHEAT SHEET**
+
+### **General**
+
+| Verb  | Meaning                     |
+| ----- | --------------------------- |
+| `%v`  | Default format              |
+| `%+v` | Adds field names in structs |
+| `%#v` | Go syntax representation    |
+| `%T`  | Type of the value           |
+| `%%`  | Literal `%`                 |
+
+### **Boolean**
+
+| Verb | Meaning      |
+| ---- | ------------ |
+| `%t` | true / false |
+
+### **Integer**
+
+| Verb  | Meaning              |
+| ----- | -------------------- |
+| `%d`  | Decimal              |
+| `%+d` | Decimal with sign    |
+| `%b`  | Binary               |
+| `%o`  | Octal                |
+| `%O`  | Octal with 0o prefix |
+| `%x`  | Hex (lower)          |
+| `%X`  | Hex (upper)          |
+| `%#x` | Hex with 0x prefix   |
+| `%c`  | Unicode character    |
+| `%q`  | Quoted character     |
+
+### **Float**
+
+| Verb | Meaning                 |
+| ---- | ----------------------- |
+| `%f` | Decimal point           |
+| `%e` | Scientific notation (e) |
+| `%E` | Scientific notation (E) |
+| `%g` | Compact representation  |
+| `%G` | Compact (E form)        |
+
+### **String & Slice of bytes**
+
+| Verb | Meaning       |
+| ---- | ------------- |
+| `%s` | String        |
+| `%q` | Quoted string |
+| `%x` | Hex lower     |
+| `%X` | Hex upper     |
+
+---
+
+## **5. WIDTH, PRECISION, ALIGNMENT**
+
+We can control **width** (total space) and **precision** (digits after decimal).
+
+```go
+fmt.Printf("%6d", 45)      // "    45" (width=6)
+fmt.Printf("%-6d", 45)     // "45    " (left-aligned)
+fmt.Printf("%06d", 45)     // "000045" (zero-padded)
+fmt.Printf("%.2f", 3.14159) // "3.14"  (precision=2)
+fmt.Printf("%6.2f", 3.14)   // "  3.14" (width=6, prec=2)
+```
+
+---
+
+## **6. Quick Difference Summary**
+
+* **`Print*`** → writes to output
+* **`Sprint*`** → returns string
+* **`Fprint*`** → writes to `io.Writer`
+* **`Scan*`** → reads into variables
+* **`Sscan*`** → reads from a string
+* **`Fscan*`** → reads from an `io.Reader`
+* `*ln` → adds newline
+* `*f` → supports format verbs
+
+---
