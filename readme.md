@@ -1279,3 +1279,326 @@ fmt.Printf("%6.2f", 3.14)   // "  3.14" (width=6, prec=2)
 * `*f` → supports format verbs
 
 ---
+
+## **1. What is a Struct in Go?**
+
+In Go, a **struct** (short for *structure*) is a composite data type that groups **zero or more fields** together under one name.
+
+* Each field has a **name** and a **type**.
+* Structs let us model **real-world entities** with multiple properties.
+* They’re similar to classes in OOP languages, but **Go structs have no methods by default** (methods are attached separately).
+
+---
+
+## **2. Declaring a Struct**
+
+```go
+type Person struct {
+    name string
+    age  int
+    city string
+}
+```
+
+Here:
+
+* `Person` is the struct type.
+* `name`, `age`, and `city` are fields.
+
+---
+
+## **3. Creating Struct Values**
+
+### **3.1 Using Field Names**
+
+```go
+p1 := Person{name: "Bruce Wayne", age: 29, city: "Gotham"}
+```
+
+✔ Safer — order doesn’t matter.
+❌ Cannot skip fields (unless they have zero values).
+
+---
+
+### **3.2 Without Field Names**
+
+```go
+p2 := Person{"Clark Kent", 35, "Metropolis"}
+```
+
+✔ Shorter, but **field order must match struct definition**.
+❌ Easy to break if struct definition changes.
+
+---
+
+### **3.3 Zero Value Struct**
+
+```go
+var p3 Person
+fmt.Println(p3) // { 0 }
+```
+
+* Strings default to `""`, ints to `0`.
+
+---
+
+### **3.4 Using `new()`**
+
+```go
+p4 := new(Person)
+p4.name = "Diana Prince"
+p4.age = 28
+```
+
+* `new()` returns a **pointer** to the struct.
+* Fields can be accessed via `p4.field` (Go automatically dereferences).
+
+---
+
+### **3.5 Anonymous Struct**
+
+```go
+p5 := struct {
+    name string
+    age  int
+}{"Barry Allen", 27}
+```
+
+* Useful for quick, temporary data structures.
+
+---
+
+## **4. Accessing and Modifying Fields**
+
+```go
+fmt.Println(p1.name) // Bruce Wayne
+p1.age = 30
+```
+
+* Dot `.` notation works for both value and pointer structs.
+
+---
+
+## **5. Structs with Pointers**
+
+Struct fields themselves can hold **pointers**:
+
+```go
+type Address struct {
+    city  string
+    pincode *int
+}
+```
+
+* Allows optional data without nil-checking primitives.
+
+---
+
+## **6. Nested Structs**
+
+```go
+type Employee struct {
+    name string
+    address Address
+}
+```
+
+* Access via `emp.address.city`.
+
+---
+
+## **7. Promoted Fields (Embedding)**
+
+Go supports **struct embedding** (composition over inheritance):
+
+```go
+type Contact struct {
+    email string
+    phone string
+}
+
+type Employee struct {
+    name string
+    Contact
+}
+
+e := Employee{name: "Alfred", Contact: Contact{"alfred@wayne.com", "123"}}
+fmt.Println(e.email) // directly accessible
+```
+
+* Fields from embedded structs are **promoted**.
+
+---
+
+## **8. Structs and Methods**
+
+We can attach methods to structs:
+
+```go
+func (p Person) greet() {
+    fmt.Printf("Hello, my name is %s\n", p.name)
+}
+```
+
+* `(p Person)` is the **receiver**.
+* Can be value receiver or pointer receiver.
+
+---
+
+## **9. Struct Comparisons**
+
+* Structs are comparable **if all fields are comparable**.
+
+```go
+p1 := Person{"Bruce", 30, "Gotham"}
+p2 := Person{"Bruce", 30, "Gotham"}
+fmt.Println(p1 == p2) // true
+```
+
+* **Slices, maps, and functions** in struct fields make it **non-comparable**.
+
+---
+
+## **10. Memory Layout**
+
+* Struct fields are stored **contiguously** in memory.
+* Go may insert **padding** for alignment, so **field order can affect memory size**.
+
+---
+
+## **✅ Do’s**
+
+* ✅ Use **field names** when initializing — improves readability and reduces errors.
+* ✅ Keep field names lowercase if we want them **private** to the package.
+* ✅ Group related fields logically.
+* ✅ Use **embedding** for reusability, not inheritance.
+* ✅ Use **pointers** for large structs to avoid copying.
+
+---
+
+## **❌ Don’ts**
+
+* ❌ Don’t rely on zero values without clear intent.
+* ❌ Don’t export fields unnecessarily (respect package boundaries).
+* ❌ Don’t embed too many structs — can lead to naming conflicts.
+* ❌ Don’t use unnamed initialization unless we control the struct definition.
+* ❌ Don’t assume struct size — padding can change it.
+
+---
+
+## **1. What Are Anonymous Struct Fields?**
+
+In Go, **anonymous fields** are struct fields declared **without an explicit name**, where the field’s **type** itself acts as the name.
+
+* These are also called **embedded fields**.
+* They’re often used for **struct embedding** (composition) but can also exist standalone.
+
+Example:
+
+```go
+type Person struct {
+    string // anonymous field of type string
+    int    // anonymous field of type int
+}
+```
+
+Here:
+
+* `string` and `int` are **field types** and **names** at the same time.
+* We can access them directly by their type name:
+
+```go
+p := Person{"Bruce Wayne", 30}
+fmt.Println(p.string) // Bruce Wayne
+fmt.Println(p.int)    // 30
+```
+
+---
+
+## **2. Why Do We Use Anonymous Fields?**
+
+1. **Code Composition** – We can embed one struct into another so the fields of the embedded struct are accessible directly.
+2. **Field Promotion** – When we embed a struct, all its exported fields and methods are “promoted” to the outer struct.
+3. **Reuse Without Inheritance** – Go avoids classical inheritance, so anonymous fields give us a way to compose behavior.
+
+---
+
+## **3. Anonymous Struct Fields with Struct Embedding**
+
+Instead of naming the field, we just write the type:
+
+```go
+type Contact struct {
+    email string
+    phone string
+}
+
+type Employee struct {
+    name string
+    Contact // anonymous field (embedded struct)
+}
+```
+
+Now:
+
+```go
+e := Employee{
+    name:    "Alfred Pennyworth",
+    Contact: Contact{"alfred@wayne.com", "123456"},
+}
+
+fmt.Println(e.email)  // direct access — no e.Contact.email needed
+fmt.Println(e.phone)  // promoted field
+```
+
+---
+
+## **4. Method Promotion with Anonymous Fields**
+
+If the embedded type has methods, they are promoted too:
+
+```go
+func (c Contact) showContact() {
+    fmt.Println("Email:", c.email, "Phone:", c.phone)
+}
+
+e.showContact() // works directly
+```
+
+* We don’t need `e.Contact.showContact()` — the method is **promoted**.
+
+---
+
+## **5. Rules of Anonymous Fields**
+
+* **Only one anonymous field of a given type** is allowed (or compilation fails due to ambiguity).
+* If multiple embedded structs have the **same field name**, we must access it explicitly via the embedded struct’s name to avoid conflicts.
+* The embedded type must be a **named type** (struct, interface, etc.) — we can’t embed primitives *unless* we want them to behave as fields with their type as name.
+
+---
+
+## **6. Anonymous Fields vs Named Fields**
+
+| **Aspect**         | **Named Field**           | **Anonymous Field**                     |
+| ------------------ | ------------------------- | --------------------------------------- |
+| Access             | `struct.fieldName`        | `struct.TypeName` or promoted name      |
+| Reusability        | Mostly standalone         | Encourages composition                  |
+| Field Promotion    | ❌ No promotion            | ✅ Fields/methods promoted               |
+| Readability        | More explicit             | Can be implicit but sometimes confusing |
+| Multiple same type | Allowed (different names) | ❌ Not allowed (same type duplicates)    |
+
+---
+
+## ✅ **Do’s**
+
+* ✅ Use anonymous fields for **struct composition** where we want to reuse and promote fields/methods.
+* ✅ Keep embedded struct’s exported fields/methods public only if they need to be accessible.
+* ✅ Use named fields for primitives unless embedding is intentional.
+
+## ❌ **Don’ts**
+
+* ❌ Don’t overuse anonymous fields for unrelated types — it makes the struct harder to understand.
+* ❌ Don’t embed multiple types that have overlapping field names without expecting conflicts.
+* ❌ Don’t confuse anonymous fields with inheritance — they are **composition**, not parent-child relationships.
+
+---
