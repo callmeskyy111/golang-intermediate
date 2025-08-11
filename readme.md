@@ -1858,3 +1858,148 @@ func (c Circle) Area() float64 {
 
 ---
 
+## **What Are Embedded Structs in Go?**
+
+In Go, we can place a struct **inside** another struct **without explicitly giving it a field name** — this is called **embedding**.
+
+When we embed a struct:
+
+* The inner struct’s fields and methods become **promoted** to the outer struct.
+* We can access them **directly** from the outer struct as if they were its own.
+* This is Go’s way of achieving a form of **composition** (instead of classical inheritance like in OOP).
+
+---
+
+### **Basic Syntax**
+
+```go
+package main
+
+import "fmt"
+
+// Inner struct
+type Person struct {
+    Name string
+    Age  int
+}
+
+// Outer struct embedding Person
+type Employee struct {
+    Person   // Embedded struct (no field name)
+    Company  string
+}
+
+func main() {
+    // Creating an Employee instance
+    emp := Employee{
+        Person: Person{
+            Name: "Bruce Wayne",
+            Age:  35,
+        },
+        Company: "Wayne Enterprises",
+    }
+
+    // Accessing embedded struct fields directly
+    fmt.Println(emp.Name)    // Bruce Wayne
+    fmt.Println(emp.Age)     // 35
+    fmt.Println(emp.Company) // Wayne Enterprises
+}
+```
+
+---
+
+### **How It Works**
+
+* By writing `Person` inside `Employee` without a name, we make it an **embedded field**.
+* We don’t need to write `emp.Person.Name` — we can directly write `emp.Name` because Go **promotes** the fields.
+* This also works with **methods**.
+
+---
+
+### **Example with Methods**
+
+```go
+package main
+
+import "fmt"
+
+type Engine struct {
+    HorsePower int
+}
+
+func (e Engine) Start() {
+    fmt.Println("Engine started with", e.HorsePower, "HP")
+}
+
+type Car struct {
+    Engine // Embedded struct
+    Brand  string
+}
+
+func main() {
+    c := Car{
+        Engine: Engine{HorsePower: 250},
+        Brand:  "Tesla",
+    }
+
+    // Directly calling method of embedded struct
+    c.Start() // Engine started with 250 HP
+}
+```
+
+---
+
+## **Key Points to Remember**
+
+1. **Field Promotion**
+
+   * Embedded struct’s fields/methods become part of the outer struct’s namespace.
+   * If there’s no naming conflict, we can access them directly.
+
+2. **Field Name Conflicts**
+
+   * If both the outer struct and embedded struct have the same field name, **we must use the full path**.
+
+   ```go
+   type A struct { Name string }
+   type B struct {
+       Name string
+       A
+   }
+   b := B{Name: "Outer", A: A{Name: "Inner"}}
+   fmt.Println(b.Name)    // Outer
+   fmt.Println(b.A.Name)  // Inner
+   ```
+
+3. **Multiple Embeddings**
+
+   * We can embed multiple structs, and Go will promote all unique fields/methods.
+
+4. **Anonymous Structs Can Be Embedded Too**
+
+   ```go
+   type Outer struct {
+       struct {
+           X int
+           Y int
+       }
+   }
+   ```
+
+---
+
+## ✅ **Do’s**
+
+* Use embedding for **composition** instead of inheritance.
+* Use it to **reuse methods and fields** between structs.
+* Keep field names unique to avoid ambiguity.
+
+## ❌ **Don’ts**
+
+* Don’t overuse embedding — it can make code confusing.
+* Avoid name collisions between outer and inner structs unless necessary.
+* Don’t treat it as classical OOP inheritance — Go’s philosophy is **composition over inheritance**.
+
+---
+
+
