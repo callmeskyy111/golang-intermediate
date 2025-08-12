@@ -2428,4 +2428,321 @@ fmt.Println(err2) // login failed: network timeout
 
 ---
 
+Alright — let’s deep dive into **custom errors in Go** so we not only know *how* to create them, but also *why* and *when* to use them.
+We’ll go from **basics → custom types → wrapping → best practices**.
+
+---
+
+## **1. Quick Refresher: Errors in Go**
+
+In Go, an **error** is just a value of the built-in `error` type.
+
+```go
+err := errors.New("something went wrong")
+if err != nil {
+    fmt.Println(err)
+}
+```
+
+* `error` is an **interface**:
+
+```go
+type error interface {
+    Error() string
+}
+```
+
+It just requires an **`Error()` method that returns a string**.
+
+---
+
+## **2. Custom Error Basics**
+
+Since `error` is an interface, we can make **our own type** that satisfies it.
+
+### Example:
+
+```go
+package main
+
+import (
+    "fmt"
+)
+
+type MyError struct {
+    Code    int
+    Message string
+}
+
+// Implement the Error() method
+func (e *MyError) Error() string {
+    return fmt.Sprintf("Error %d: %s", e.Code, e.Message)
+}
+
+func doSomething() error {
+    return &MyError{Code: 404, Message: "Resource not found"}
+}
+
+func main() {
+    err := doSomething()
+    if err != nil {
+        fmt.Println(err) // Error 404: Resource not found
+    }
+}
+```
+
+---
+
+### **Key Points Here**
+
+* `MyError` is a struct holding **extra info** (`Code`, `Message`).
+* We made it satisfy `error` by adding `Error() string`.
+* We returned a pointer (`*MyError`) because that’s common when working with struct receivers in Go.
+
+---
+
+## **3. Using `errors.New()` vs `fmt.Errorf()`**
+
+* `errors.New("msg")` → Quick way to make a basic error.
+* `fmt.Errorf("...")` → Lets us format strings into errors.
+
+Example:
+
+```go
+err := fmt.Errorf("user %s not found", "Skyy")
+fmt.Println(err) // user Skyy not found
+```
+
+---
+
+## **4. Wrapping Errors (Go 1.13+)**
+
+Go allows **wrapping** an error with `%w` in `fmt.Errorf()`.
+
+* This keeps the original error while adding context.
+* We can later **unwrap** it to get the cause.
+
+Example:
+
+```go
+import (
+    "errors"
+    "fmt"
+)
+
+var ErrNotFound = errors.New("not found")
+
+func findUser() error {
+    return fmt.Errorf("in findUser: %w", ErrNotFound)
+}
+
+func main() {
+    err := findUser()
+
+    // Check if it's our specific error
+    if errors.Is(err, ErrNotFound) {
+        fmt.Println("User not found!")
+    }
+}
+```
+
+---
+
+## **5. Adding More Context with Custom Errors**
+
+We can mix **custom types** with wrapping.
+
+Example:
+
+```go
+type DatabaseError struct {
+    Op  string
+    Err error
+}
+
+func (e *DatabaseError) Error() string {
+    return fmt.Sprintf("database %s error: %v", e.Op, e.Err)
+}
+
+func queryDB() error {
+    return &DatabaseError{
+        Op:  "SELECT",
+        Err: errors.New("connection refused"),
+    }
+}
+
+func main() {
+    err := queryDB()
+    fmt.Println(err)
+}
+```
+
+Output:
+
+```
+database SELECT error: connection refused
+```
+
+---
+
+## **6. Why Use Custom Errors?**
+
+* **Add metadata** (e.g., error code, operation name).
+* **Check specific types** using `errors.As()`:
+
+```go
+var dbErr *DatabaseError
+if errors.As(err, &dbErr) {
+    fmt.Println("This is a DatabaseError with op:", dbErr.Op)
+}
+```
+
+* **Better debugging** with more context.
+* **Clear separation** between different error types in large projects.
+
+---
+
+## **7. Best Practices**
+
+1. **Keep them simple** — only add fields you actually need.
+2. **Use sentinel errors** (`var ErrXYZ = errors.New("...")`) for known conditions.
+3. **Wrap errors** when adding context, don’t replace them.
+4. **Use `errors.Is` & `errors.As`** for checking, not string matching.
+5. Avoid creating **too many** custom error types unless necessary.
+
+---
+
+## **8. TL;DR Custom Error Flow**
+
+1. Define a struct for extra fields.
+2. Implement `Error() string` method.
+3. Return it where needed.
+4. Use `errors.Is` / `errors.As` to check it.
+5. Wrap with `%w` if you need to add context.
+
+---
+
+Alright — this is one of those Go error-handling details that trips people up at first, so let’s make **`errors.Is`** and **`errors.As`** crystal clear.
+
+---
+
+## **1. `errors.Is`**
+
+**Purpose:**
+Checks if an error **is or wraps a specific target error** (compares by value, like equality).
+
+**Think:**
+
+> “Is this error equal to, or caused by, this known error?”
+
+**Example:**
+
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+var ErrNotFound = errors.New("not found")
+
+func findUser() error {
+    return fmt.Errorf("failed to find user: %w", ErrNotFound)
+}
+
+func main() {
+    err := findUser()
+    if errors.Is(err, ErrNotFound) {
+        fmt.Println("User not found!") // ✅ True, because err wraps ErrNotFound
+    }
+}
+```
+
+**When to use:**
+
+* We have **sentinel errors** (predeclared constants like `ErrNotFound`, `ErrUnauthorized`).
+* We want to know if the chain of wrapped errors contains that specific one.
+
+---
+
+## **2. `errors.As`**
+
+**Purpose:**
+Checks if an error **is or wraps a specific type**, and if yes, assigns it to a variable.
+
+**Think:**
+
+> “Is this error of this custom type? If yes, give me access to it.”
+
+**Example:**
+
+```go
+package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+type MyError struct {
+    Code int
+}
+
+func (e *MyError) Error() string {
+    return fmt.Sprintf("code: %d", e.Code)
+}
+
+func doSomething() error {
+    return fmt.Errorf("something failed: %w", &MyError{Code: 404})
+}
+
+func main() {
+    err := doSomething()
+
+    var myErr *MyError
+    if errors.As(err, &myErr) {
+        fmt.Println("Got MyError with code:", myErr.Code) // ✅ 404
+    }
+}
+```
+
+**When to use:**
+
+* We have **custom error types** with extra fields.
+* We need to **extract and use** that extra info.
+
+---
+
+## **3. Quick Visual**
+
+| Feature     | `errors.Is`               | `errors.As`                             |
+| ----------- | ------------------------- | --------------------------------------- |
+| Compares by | **Value**                 | **Type**                                |
+| Target      | Predefined error variable | Pointer to a variable of the error type |
+| Returns     | `bool`                    | `bool` (and assigns)                    |
+| Use Case    | “Does this wrap ErrX?”    | “Is this a MyError? Give it to me”      |
+
+---
+
+## **4. Both Together Example**
+
+```go
+if errors.Is(err, ErrNotFound) {
+    fmt.Println("We hit the not found case")
+}
+
+var myErr *MyError
+if errors.As(err, &myErr) {
+    fmt.Println("Error code:", myErr.Code)
+}
+```
+
+Here:
+
+* `errors.Is` → checks for a **specific instance**.
+* `errors.As` → pulls out a **specific type**.
+
+---
+
 
