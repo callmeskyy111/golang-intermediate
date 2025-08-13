@@ -2745,4 +2745,405 @@ Here:
 
 ---
 
+**all the important string functions in Go**, so we can have a full reference whenever we need it.
 
+We’ll focus mainly on the **`strings` package**, plus a few `fmt`, `strconv`, and `bytes` helpers that are commonly used with strings.
+
+---
+
+## **📚 1. Importing the package**
+
+```go
+import "strings"
+```
+
+All functions are **case-sensitive** and operate on UTF-8 encoded strings.
+
+---
+
+## **🔍 2. Search & Check Functions**
+
+| Function                         | Description                                                | Example                                        |
+| -------------------------------- | ---------------------------------------------------------- | ---------------------------------------------- |
+| `strings.Contains(s, substr)`    | Checks if `substr` is inside `s`. Returns `bool`.          | `strings.Contains("Hello", "ell") // true`     |
+| `strings.ContainsAny(s, chars)`  | True if any Unicode code point from `chars` exists in `s`. | `strings.ContainsAny("team", "aeiou") // true` |
+| `strings.ContainsRune(s, r)`     | True if rune `r` exists in `s`.                            | `strings.ContainsRune("golang", 'g') // true`  |
+| `strings.HasPrefix(s, prefix)`   | True if `s` starts with `prefix`.                          | `strings.HasPrefix("GoLang", "Go") // true`    |
+| `strings.HasSuffix(s, suffix)`   | True if `s` ends with `suffix`.                            | `strings.HasSuffix("GoLang", "Lang") // true`  |
+| `strings.Count(s, substr)`       | Counts non-overlapping occurrences of `substr` in `s`.     | `strings.Count("banana", "na") // 2`           |
+| `strings.Index(s, substr)`       | Returns first index of `substr`, or `-1` if not found.     | `strings.Index("banana", "na") // 2`           |
+| `strings.LastIndex(s, substr)`   | Last occurrence of `substr`.                               | `strings.LastIndex("banana", "na") // 4`       |
+| `strings.IndexAny(s, chars)`     | Index of first occurrence of any char from `chars`.        | `strings.IndexAny("team", "aeiou") // 1`       |
+| `strings.LastIndexAny(s, chars)` | Last occurrence of any char from `chars`.                  | `strings.LastIndexAny("team", "aeiou") // 3`   |
+| `strings.IndexRune(s, r)`        | Index of first rune `r`.                                   | `strings.IndexRune("golang", 'g') // 0`        |
+
+---
+
+## **✂️ 3. Modify / Transform Strings**
+
+| Function                                           | Description                                | Example                                          |
+| -------------------------------------------------- | ------------------------------------------ | ------------------------------------------------ |
+| `strings.ToUpper(s)`                               | Converts to uppercase.                     | `"go" → "GO"`                                    |
+| `strings.ToLower(s)`                               | Converts to lowercase.                     | `"GO" → "go"`                                    |
+| `strings.Title(s)` (deprecated, use `cases.Title`) | Title-case each word.                      | `"hello world" → "Hello World"`                  |
+| `strings.ToTitle(s)`                               | Unicode title mapping.                     | `"hello" → "HELLO"` (differs in special locales) |
+| `strings.Repeat(s, count)`                         | Repeat string `count` times.               | `Repeat("ab", 3) → "ababab"`                     |
+| `strings.Replace(s, old, new, n)`                  | Replace first `n` occurrences.             | `Replace("foo", "o", "0", -1) → "f00"`           |
+| `strings.ReplaceAll(s, old, new)`                  | Replace all occurrences.                   | `"foo" → "f00"`                                  |
+| `strings.Trim(s, cutset)`                          | Remove leading/trailing runes in `cutset`. | `Trim("!!hi!!", "!") → "hi"`                     |
+| `strings.TrimSpace(s)`                             | Removes all leading/trailing whitespace.   | `"  hi  " → "hi"`                                |
+| `strings.TrimPrefix(s, prefix)`                    | Removes prefix if present.                 | `"GoLang" → "Lang"`                              |
+| `strings.TrimSuffix(s, suffix)`                    | Removes suffix if present.                 | `"GoLang" → "Go"`                                |
+
+---
+
+## **🪓 4. Splitting & Joining**
+
+| Function                         | Description                     | Example                                                  |   |              |
+| -------------------------------- | ------------------------------- | -------------------------------------------------------- | - | ------------ |
+| `strings.Split(s, sep)`          | Splits into slice by separator. | `Split("a,b,c", ",") → ["a","b","c"]`                    |   |              |
+| `strings.SplitN(s, sep, n)`      | At most `n` substrings.         | `SplitN("a,b,c", ",", 2) → ["a","b,c"]`                  |   |              |
+| `strings.SplitAfter(s, sep)`     | Keep separator in result.       | `"a,b,c" → ["a,","b,","c"]`                              |   |              |
+| `strings.SplitAfterN(s, sep, n)` | Keep separator, limit results.  |                                                          |   |              |
+| `strings.Fields(s)`              | Split by any whitespace.        | `"a b\tc\n" → ["a","b","c"]`                             |   |              |
+| `strings.FieldsFunc(s, f)`       | Custom split based on function. | \`FieldsFunc("a-b\_c", func(r rune) bool { return r=='-' |   | r=='\_' })\` |
+| `strings.Join(slice, sep)`       | Join slice into single string.  | `Join([]string{"a","b"}, "-") → "a-b"`                   |   |              |
+
+---
+
+## **🧠 5. Mapping & Functional Helpers**
+
+| Function                      | Description                       | Example                    |
+| ----------------------------- | --------------------------------- | -------------------------- |
+| `strings.Map(mappingFunc, s)` | Apply function to each rune.      | Convert all vowels to `*`. |
+| `strings.Compare(a, b)`       | Lexicographic compare (-1, 0, 1). | `"a" vs "b"` → -1          |
+| `strings.EqualFold(s1, s2)`   | Case-insensitive compare.         | `"Go" vs "gO"` → true      |
+
+---
+
+## **🔢 6. Conversion Helpers (Other Packages)**
+
+| Package                     | Function        | Example           |
+| --------------------------- | --------------- | ----------------- |
+| `strconv.Itoa(int)`         | Int → string.   | `Itoa(42) → "42"` |
+| `strconv.Atoi(str)`         | String → int.   | `Atoi("42") → 42` |
+| `strconv.FormatFloat(...)`  | Float → string. |                   |
+| `strconv.ParseBool("true")` | String → bool.  |                   |
+
+---
+
+## **📌 7. Notes & Gotchas**
+
+* Strings in Go are **immutable** — every transformation returns a **new** string.
+* For **performance** with many concatenations, use `strings.Builder` or `bytes.Buffer`.
+* Be careful with Unicode — `len(s)` returns **bytes**, not runes. Use `utf8.RuneCountInString(s)` for character count.
+
+---
+
+## **1. What is Regex in Go?**
+
+A **Regular Expression (Regex)** is a string pattern used to match, search, or manipulate text.
+In Go, we use the **`regexp`** package from the standard library.
+
+**Import:**
+
+```go
+import "regexp"
+```
+
+Regex in Go is **Perl-style** (similar to other languages), but Go’s API is stricter and **must be compiled before use**.
+
+---
+
+## **2. Creating Regex in Go**
+
+We have **two main functions** for creating a Regex:
+
+### **a. `regexp.Compile()`**
+
+* Compiles a regex pattern and returns a `*Regexp` object.
+* Can return an error if the pattern is invalid.
+
+```go
+re, err := regexp.Compile(`\d+`)
+if err != nil {
+	fmt.Println("Invalid regex:", err)
+}
+```
+
+### **b. `regexp.MustCompile()`**
+
+* Same as `Compile()` but panics if the pattern is invalid.
+* Common when the pattern is constant and guaranteed valid.
+
+```go
+re := regexp.MustCompile(`\d+`) // no error handling
+```
+
+---
+
+## **3. Common Regex Methods in Go**
+
+Let’s use:
+
+```go
+re := regexp.MustCompile(`\d+`) // matches one or more digits
+```
+
+| Method                       | Purpose                                          | Example                                                                         | Output                        |
+| ---------------------------- | ------------------------------------------------ | ------------------------------------------------------------------------------- | ----------------------------- |
+| **`MatchString()`**          | Checks if pattern matches anywhere in the string | `re.MatchString("Age: 29")`                                                     | `true`                        |
+| **`FindString()`**           | Returns **first** match                          | `re.FindString("Age: 29, Height: 180")`                                         | `"29"`                        |
+| **`FindAllString()`**        | Returns **all** matches                          | `re.FindAllString("Age: 29, Height: 180", -1)`                                  | `["29", "180"]`               |
+| **`FindStringIndex()`**      | Returns `[start, end]` index of first match      | `re.FindStringIndex("abc123xyz")`                                               | `[3, 6]`                      |
+| **`FindAllStringIndex()`**   | Returns indexes of all matches                   | `re.FindAllStringIndex("abc123xyz456", -1)`                                     | `[[3, 6], [9, 12]]`           |
+| **`ReplaceAllString()`**     | Replaces all matches with text                   | `re.ReplaceAllString("abc123xyz", "#")`                                         | `"abc#xyz"`                   |
+| **`ReplaceAllStringFunc()`** | Replace all matches using a function             | `re.ReplaceAllStringFunc("abc123", func(s string) string { return "["+s+"]" })` | `"abc[123]"`                  |
+| **`Split()`**                | Splits string by pattern                         | `re.Split("one1two2three3", -1)`                                                | `["one", "two", "three", ""]` |
+
+---
+
+## **4. Regex Syntax in Go**
+
+Go follows **RE2 syntax** (safe, no catastrophic backtracking like some PCRE regexes).
+Here’s a quick reference:
+
+### **a. Character Classes**
+
+| Pattern  | Meaning                         |
+| -------- | ------------------------------- |
+| `.`      | Any character except newline    |
+| `[abc]`  | Any of a, b, or c               |
+| `[^abc]` | Any char NOT a, b, or c         |
+| `[a-z]`  | Range (lowercase letters)       |
+| `\d`     | Digit (0-9)                     |
+| `\D`     | Non-digit                       |
+| `\w`     | Word char (letters, digits, \_) |
+| `\W`     | Non-word char                   |
+| `\s`     | Whitespace                      |
+| `\S`     | Non-whitespace                  |
+
+---
+
+### **b. Quantifiers**
+
+| Pattern | Meaning         |
+| ------- | --------------- |
+| `*`     | 0 or more       |
+| `+`     | 1 or more       |
+| `?`     | 0 or 1          |
+| `{n}`   | Exactly n       |
+| `{n,}`  | n or more       |
+| `{n,m}` | Between n and m |
+
+---
+
+### **c. Anchors**
+
+| Pattern | Meaning           |
+| ------- | ----------------- |
+| `^`     | Start of string   |
+| `$`     | End of string     |
+| `\b`    | Word boundary     |
+| `\B`    | Non-word boundary |
+
+---
+
+### **d. Groups**
+
+| Pattern         | Meaning               |
+| --------------- | --------------------- |
+| `(abc)`         | Capturing group       |
+| `(?:abc)`       | Non-capturing group   |
+| `(?P<name>abc)` | Named capturing group |
+
+---
+
+## **5. Example: Extracting Emails**
+
+```go
+package main
+
+import (
+	"fmt"
+	"regexp"
+)
+
+func main() {
+	text := "Contact us at support@example.com or sales@example.org"
+	re := regexp.MustCompile(`[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}`)
+	emails := re.FindAllString(text, -1)
+	fmt.Println(emails) // [support@example.com sales@example.org]
+}
+```
+
+---
+
+## **6. Tips & Gotchas**
+
+✅ Use `MustCompile()` for fixed patterns.
+✅ Always escape `\` as `\\` in Go string literals.
+✅ Remember: Go regex doesn’t support lookbehind assertions.
+✅ `(?i)` makes it case-insensitive:
+
+```go
+re := regexp.MustCompile(`(?i)hello`)
+```
+
+---
+
+Alright — let’s dive deep into **`strings.Builder`** in Go, because it’s one of those tools that can make our string handling **much faster and more memory-efficient** if used correctly.
+
+---
+
+## **1. What is `strings.Builder`?**
+
+`strings.Builder` is a type in Go’s `strings` package that lets us **build strings efficiently** by appending multiple parts together **without creating intermediate copies** each time.
+
+Normally, if we do:
+
+```go
+s := ""
+s += "Hello"
+s += " "
+s += "World"
+```
+
+Go has to create **a new string each time** (because strings are immutable in Go), which is inefficient for large concatenations.
+
+With `strings.Builder`:
+
+* We can append to an internal buffer.
+* It only allocates new memory when needed.
+* This avoids multiple intermediate allocations.
+
+---
+
+## **2. Importing**
+
+```go
+import "strings"
+```
+
+---
+
+## **3. Creating a `strings.Builder`**
+
+```go
+var b strings.Builder // zero value is ready to use
+// OR
+b := strings.Builder{}
+```
+
+We don’t need to manually initialize it — the zero value works.
+
+---
+
+## **4. Common Methods**
+
+Let’s explore the key methods (all from `strings.Builder`):
+
+| Method                    | Purpose                              | Example                 |
+| ------------------------- | ------------------------------------ | ----------------------- |
+| **`Write([]byte)`**       | Appends byte slice to the builder    | `b.Write([]byte("Go"))` |
+| **`WriteString(string)`** | Appends string                       | `b.WriteString("Lang")` |
+| **`WriteRune(rune)`**     | Appends a single Unicode character   | `b.WriteRune('✓')`      |
+| **`String()`**            | Returns the built string             | `result := b.String()`  |
+| **`Len()`**               | Current length of built string       | `b.Len()`               |
+| **`Cap()`**               | Current capacity (allocated memory)  | `b.Cap()`               |
+| **`Grow(n int)`**         | Preallocates at least `n` more bytes | `b.Grow(50)`            |
+| **`Reset()`**             | Clears the content for reuse         | `b.Reset()`             |
+
+---
+
+## **5. Example Usage**
+
+```go
+package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+func main() {
+	var b strings.Builder
+
+	b.WriteString("Hello")
+	b.WriteRune(' ')
+	b.WriteString("World")
+	b.WriteByte('!')
+
+	fmt.Println(b.String()) // Hello World!
+	fmt.Println("Length:", b.Len())
+	fmt.Println("Capacity:", b.Cap())
+}
+```
+
+---
+
+## **6. Why Use `strings.Builder`?**
+
+* **Efficiency:** Avoids repeated allocations from string concatenation.
+* **Reusability:** Can reset and reuse the builder without reallocation (in some cases).
+* **Flexibility:** Works with strings, runes, and byte slices.
+
+---
+
+## **7. Performance Difference**
+
+```go
+package main
+
+import (
+	"strings"
+	"time"
+)
+
+func concatNormal() string {
+	s := ""
+	for i := 0; i < 10000; i++ {
+		s += "x"
+	}
+	return s
+}
+
+func concatBuilder() string {
+	var b strings.Builder
+	b.Grow(10000) // preallocate
+	for i := 0; i < 10000; i++ {
+		b.WriteByte('x')
+	}
+	return b.String()
+}
+
+func main() {
+	start := time.Now()
+	concatNormal()
+	fmt.Println("Normal concat took:", time.Since(start))
+
+	start = time.Now()
+	concatBuilder()
+	fmt.Println("Builder concat took:", time.Since(start))
+}
+```
+
+On large iterations, `strings.Builder` can be **5x–10x faster**.
+
+---
+
+## **8. Gotchas & Best Practices**
+
+1. **Don’t copy `strings.Builder` values.**
+   Copying a builder will break things because it internally manages a slice of bytes. Always pass a pointer if needed.
+
+2. **Not safe for concurrent use.**
+   If multiple goroutines need to build a string together, use a lock or separate builders.
+
+3. **Reuse carefully.**
+   `Reset()` clears data but does not shrink capacity — useful for reusing memory in loops.
+
+4. **Preallocate when possible.**
+   Using `Grow()` helps avoid repeated memory growth.
+
+---
