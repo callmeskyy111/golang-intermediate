@@ -3147,3 +3147,472 @@ On large iterations, `strings.Builder` can be **5x–10x faster**.
    Using `Grow()` helps avoid repeated memory growth.
 
 ---
+
+Alright — let’s go deep into **Text Templates** in Go, because they’re one of the most powerful tools in the standard library for generating dynamic text output (HTML, configuration files, CLI output, emails, etc.) without resorting to messy string concatenation.
+
+We’ll cover **how they work, syntax, data passing, functions, advanced features, and best practices**.
+
+---
+
+## **1. What is a Text Template in Go?**
+
+A **text template** is like a blueprint for generating text output, where we can:
+
+* **Insert values dynamically** from variables/structs/maps.
+* **Use control structures** (loops, conditionals).
+* **Call functions**.
+* **Nest templates** for modularity.
+
+They come from the **`text/template`** package:
+
+```go
+import "text/template"
+```
+
+Unlike `html/template`, it **does not escape HTML** — so it’s used for plain text, not HTML rendering (though syntax is almost identical).
+
+---
+
+## **2. Basic Workflow**
+
+Using templates in Go generally follows these steps:
+
+1. **Define** the template (string or file).
+2. **Parse** it into a `*template.Template`.
+3. **Execute** it with some data (the `Execute` method).
+
+---
+
+### **Basic Example**
+
+```go
+package main
+
+import (
+	"os"
+	"text/template"
+)
+
+func main() {
+	// Step 1: Create a template string
+	tmpl := `Hello, {{.Name}}! You are {{.Age}} years old.`
+
+	// Step 2: Parse it
+	t, err := template.New("greeting").Parse(tmpl)
+	if err != nil {
+		panic(err)
+	}
+
+	// Step 3: Execute with data
+	data := struct {
+		Name string
+		Age  int
+	}{"Skyy", 29}
+
+	t.Execute(os.Stdout, data)
+}
+```
+
+**Output:**
+
+```
+Hello, Skyy! You are 29 years old.
+```
+
+---
+
+## **3. Template Syntax Basics**
+
+All Go templates use `{{ ... }}` for expressions.
+
+| Syntax                 | Meaning                     | Example                             |
+| ---------------------- | --------------------------- | ----------------------------------- |
+| `{{.}}`                | Current data item           | `{{.}}`                             |
+| `{{.Field}}`           | Access struct field         | `{{.Name}}`                         |
+| `{{.Key}}`             | Access map key              | `{{.City}}`                         |
+| `{{.Method}}`          | Call method on data         | `{{.UpperCase}}`                    |
+| `{{ $var := .Field }}` | Assign variable in template | `{{$name := .Name}}Hello {{$name}}` |
+
+---
+
+## **4. Control Structures**
+
+### **If**
+
+```go
+{{if .IsAdmin}}
+    Welcome, admin!
+{{else}}
+    Hello, user.
+{{end}}
+```
+
+### **Range (loop)**
+
+```go
+{{range .Items}}
+    - {{.}}
+{{end}}
+```
+
+If `.Items` is a slice of strings, `{{.}}` will print each string.
+
+### **With**
+
+Narrow the scope to a specific value:
+
+```go
+{{with .Address}}
+    City: {{.City}}
+    Zip: {{.Zip}}
+{{end}}
+```
+
+---
+
+## **5. Functions in Templates**
+
+Go templates have built-in functions (`and`, `or`, `not`, `len`, `index`, `printf`, `html`, `urlquery`, etc.).
+
+Example:
+
+```go
+{{printf "My age is %d" .Age}}
+```
+
+---
+
+## **6. Custom Functions**
+
+We can add **our own functions** with `Funcs()`.
+
+```go
+package main
+
+import (
+	"os"
+	"strings"
+	"text/template"
+)
+
+func main() {
+	funcs := template.FuncMap{
+		"upper": strings.ToUpper,
+	}
+
+	tmpl := `{{upper .Name}}`
+	t := template.New("test").Funcs(funcs)
+	t, _ = t.Parse(tmpl)
+
+	data := struct{ Name string }{"skyy"}
+	t.Execute(os.Stdout, data)
+}
+```
+
+**Output:**
+
+```
+SKYY
+```
+
+---
+
+## **7. Parsing Templates from Files**
+
+```go
+t, err := template.ParseFiles("file1.txt", "file2.txt")
+t.Execute(os.Stdout, data)
+```
+
+Or from a directory:
+
+```go
+t, _ := template.ParseGlob("templates/*.txt")
+```
+
+---
+
+## **8. Nested Templates**
+
+We can define reusable chunks inside a file:
+
+```gotemplate
+{{define "header"}}== HEADER =={{end}}
+{{define "footer"}}== FOOTER =={{end}}
+
+{{template "header"}}
+Body content here
+{{template "footer"}}
+```
+
+---
+
+## **9. Error Handling**
+
+* **`Parse` errors** → bad template syntax.
+* **`Execute` errors** → invalid data access (like `{{.NonExistent}}` when field doesn’t exist).
+
+---
+
+## **10. Common Gotchas**
+
+❌ **Dot (`.`) confusion** – `.` changes inside `range` and `with`. If you need outer context, use `$` to store it:
+
+```go
+{{$root := .}}
+{{range .Items}}
+    {{.}} from {{$root.Category}}
+{{end}}
+```
+
+❌ **No HTML escaping** – `text/template` doesn’t protect from XSS. Use `html/template` for web content.
+
+❌ **Function order** – You must attach `Funcs()` **before** parsing.
+
+---
+
+## **11. Do’s & Don’ts**
+
+✅ **Use `text/template` for non-HTML** (emails, logs, config).
+✅ **Pre-parse templates** at startup for performance.
+✅ **Attach functions before parsing**.
+✅ **Use `template.Must()`** for compile-time checking.
+❌ **Don’t store `template.Template` in global mutable vars** without sync in concurrent apps.
+❌ **Don’t overcomplicate logic in templates** — keep them simple and readable.
+
+---
+
+Now, let’s unpack this Golang **Text Template** program in detail — section by section — so we fully understand what’s happening and why.
+
+This program is essentially:
+
+* Demonstrating **`text/template`** usage.
+* Showing how to dynamically populate strings (like HTML, notifications, error messages).
+* Providing an **interactive menu** to render templates with user-provided data.
+
+---
+
+## **1️⃣ Imports and Purpose**
+
+```go
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+	"text/template"
+)
+```
+
+We are importing:
+
+* **`bufio`** → Buffered I/O to read input from the console.
+* **`fmt`** → Printing and formatting output.
+* **`os`** → For standard input/output streams (e.g., `os.Stdout`).
+* **`strings`** → For trimming spaces/newlines from user input.
+* **`text/template`** → Go’s template engine for text-based templates (safe for console, text files, and non-HTML).
+
+---
+
+## **2️⃣ Creating a Simple Template**
+
+```go
+tmpl, err := template.New("example").Parse("Welcome , {{.name}}! How are you doing?\n")
+```
+
+* **`template.New("example")`** → Creates a new template instance named `"example"`.
+* **`.Parse()`** → Compiles a template string with placeholders.
+* **`{{.name}}`** → Dot (`.`) refers to the data object passed into the template.
+
+  * In this case, `.name` means “look for the field/key `name` in the provided data.”
+
+**Error check:**
+
+```go
+if err != nil {
+	panic(err.Error())
+}
+```
+
+If parsing fails, the program stops.
+
+---
+
+## **3️⃣ Executing the Template**
+
+```go
+data := map[string]any{
+	"name": "John",
+}
+err = tmpl.Execute(os.Stdout, data)
+```
+
+* **`data`** → A map with `"name": "John"`.
+* **`tmpl.Execute(os.Stdout, data)`** → Replaces `{{.name}}` with `"John"` and prints to console.
+
+---
+
+## **4️⃣ Using `template.Must` for Simplicity**
+
+```go
+tmpl1 := template.Must(template.New("example").Parse("Welcome , {{.name}}! How are you doing?\n"))
+```
+
+* `template.Must()` → Panics immediately if parsing fails.
+  This is handy for templates that should **always** be valid.
+
+```go
+data1 := map[string]any{
+	"name": "Skyy",
+}
+tmpl1.Execute(os.Stdout, data1)
+```
+
+Prints `"Welcome, Skyy!"`.
+
+---
+
+## **5️⃣ Reading User Input**
+
+```go
+reader := bufio.NewReader(os.Stdin)
+fmt.Println("Enter your name: ")
+name, err := reader.ReadString('\n')
+name = strings.TrimSpace(name)
+```
+
+* Reads the user’s name.
+* `strings.TrimSpace()` removes `\n` and extra spaces.
+
+---
+
+## **6️⃣ Defining Multiple Templates**
+
+```go
+templates := map[string]string{
+	"welcome": "Herzlich Willkommen {{.name}}! Freut mich sehr 💖",
+	"notification": "{{.nm}} , you have a new notification: {{.ntf}}",
+	"error": "Oops! An ERROR occurred: {{.errorMsg}} ⚠️",
+}
+```
+
+* **Why map?** → Easy to store many templates and retrieve them by key.
+
+---
+
+## **7️⃣ Parsing and Storing Templates**
+
+```go
+parsedTemps := make(map[string]*template.Template)
+for name, tmp := range templates {
+	parsedTemps[name] = template.Must(template.New(name).Parse(tmp))
+}
+```
+
+* Loop over all template strings.
+* Parse them into **`*template.Template`** objects and store for later use.
+
+---
+
+## **8️⃣ Menu Loop (While-like for { })**
+
+```go
+for {
+	// Show menu
+	fmt.Println("\n📃Menu:")
+	fmt.Println("1. Join 👤")
+	fmt.Println("2. Get Notification 🔔")
+	fmt.Println("3. Get Error 🔴")
+	fmt.Println("4. Exit 🚪")
+	fmt.Println("Choose an option: ")
+
+	choice, _ := reader.ReadString('\n')
+	choice = strings.TrimSpace(choice)
+
+	var data map[string]any
+	var tmplt *template.Template
+```
+
+* This runs forever until the user chooses **Exit**.
+* `data` and `tmplt` are set based on menu choice.
+
+---
+
+## **9️⃣ Handling User Choice**
+
+```go
+switch choice {
+case "1":
+	tmplt = parsedTemps["welcome"]
+	data = map[string]any{"name": name}
+
+case "2":
+	fmt.Println("Enter your notification msg:")
+	notification, _ := reader.ReadString('\n')
+	notification = strings.TrimSpace(notification)
+	tmplt = parsedTemps["notification"]
+	data = map[string]any{"nm": name, "ntf": notification}
+
+case "3":
+	fmt.Println("Enter your errorMessage:")
+	errorMessage, _ := reader.ReadString('\n')
+	errorMessage = strings.TrimSpace(errorMessage)
+	tmplt = parsedTemps["error"]
+	data = map[string]any{"nm": name, "errorMsg": errorMessage}
+
+case "4":
+	fmt.Println("Exiting... ✔️")
+	return
+
+default:
+	fmt.Println("Invalid Choice.. Please select a valid option!")
+	continue
+}
+```
+
+* Each case sets:
+
+  * **`tmplt`** → Which template to use.
+  * **`data`** → What data to insert.
+
+---
+
+## **🔟 Rendering the Template**
+
+```go
+err := tmplt.Execute(os.Stdout, data)
+if err != nil {
+	fmt.Println("Error executing template:", err)
+}
+```
+
+* Executes the chosen template with its data.
+* If there’s a missing key or syntax error, we’ll see an error.
+
+---
+
+## **🔍 Key Takeaways**
+
+* **`text/template`** is for plain text (HTML uses `html/template` for auto-escaping).
+* Templates use **`{{.FieldName}}`** syntax to insert values.
+* `template.Must()` simplifies error handling at parse time.
+* We can store multiple templates in **maps** for flexible retrieval.
+* Templates are **type-safe** — missing fields cause execution errors.
+
+---
+
+## **✅ Do’s**
+
+* ✅ Use `template.Must()` for static templates.
+* ✅ Always check `Execute()` errors.
+* ✅ Store templates in a map if they’re reused often.
+* ✅ Trim spaces/newlines when taking user input.
+
+## **❌ Don’ts**
+
+* ❌ Don’t use `text/template` for HTML output on websites (use `html/template` instead for XSS safety).
+* ❌ Don’t ignore execution errors — templates fail silently if we skip error checks.
+* ❌ Don’t hardcode dynamic user data without sanitizing when it’s coming from untrusted input.
+
+---
+
