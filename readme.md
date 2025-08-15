@@ -3843,3 +3843,202 @@ fmt.Println(t)
 
 ---
 
+Here’s a deep, practical guide to **Epoch time in Go** (aka “Unix time”). This is everything we’ll use when building APIs, storing timestamps in DBs, logging, TTLs, etc.
+
+---
+
+# What is “Epoch” (Unix time)?
+
+* **Unix epoch** = **Jan 1, 1970 00:00:00 UTC**.
+* A Unix timestamp is a **count of time since the epoch**:
+
+  * **seconds** (classic): `int64`
+  * **milliseconds**, **microseconds**, **nanoseconds**: finer units for higher precision
+
+---
+
+# Getting “now” as Unix time
+
+```go
+now := time.Now()
+
+secs  := now.Unix()        // int64 seconds since epoch
+millis:= now.UnixMilli()   // int64 milliseconds
+micros:= now.UnixMicro()   // int64 microseconds
+nanos := now.UnixNano()    // int64 nanoseconds
+```
+
+> Use `Unix()` for DBs that store seconds. Many JS/HTTP clients use **ms**; mobile SDKs often use **ms** or **s**.
+
+---
+
+# Converting Unix → time.Time (and timezone)
+
+```go
+// From seconds + optional nanoseconds
+tUTC := time.Unix(1734295200, 0)      // 2025-12-16T12:00:00Z (example)
+
+// From milliseconds
+ms := int64(1734295200000)
+tFromMs := time.Unix(0, ms*int64(time.Millisecond))
+
+// Show in a specific zone (e.g., Asia/Kolkata)
+loc, _ := time.LoadLocation("Asia/Kolkata")
+tIST := tFromMs.In(loc)
+fmt.Println(tIST.Format(time.RFC3339)) // 2025-12-16T17:30:00+05:30
+```
+
+**Notes**
+
+* `time.Unix(sec, nsec)` treats arguments as **UTC-based** epoch values.
+* Convert display with `t.In(location)`.
+
+---
+
+# Converting time.Time → Unix
+
+```go
+t := time.Date(2025, 8, 15, 10, 0, 0, 0, time.UTC)
+fmt.Println(t.Unix())      // seconds
+fmt.Println(t.UnixMilli()) // milliseconds
+fmt.Println(t.UnixNano())  // nanoseconds
+```
+
+---
+
+# Formatting vs. Unix
+
+* **Unix** is numeric; **formatting** is text.
+* Go’s layout reference is: `2006-01-02 15:04:05` (Mon Jan 2 15:04:05 MST 2006).
+
+```go
+fmt.Println(time.Now().Format(time.RFC3339))           // 2025-08-15T12:34:56+05:30
+fmt.Println(time.Now().Format("2006-01-02 15:04:05"))  // custom format
+```
+
+There’s **no direct parser** for numeric epoch strings; parse to an integer, then `time.Unix`.
+
+```go
+s := "1734295200" // seconds as string
+sec, _ := strconv.ParseInt(s, 10, 64)
+t := time.Unix(sec, 0)
+```
+
+---
+
+# Choosing the right unit (s/ms/µs/ns)
+
+* **Seconds**: compact, common in DBs and APIs; good default.
+* **Milliseconds**: common in JS/frontends; good for events/UI timelines.
+* **Micro/Nano**: use when you need high precision (traces, profiling).
+
+**DB tip:** store as **INTEGER** (seconds or ms). Document the unit!
+
+---
+
+# Epoch in APIs (typical patterns)
+
+### 1) Return timestamps in JSON
+
+```go
+type Event struct {
+    ID        int    `json:"id"`
+    Name      string `json:"name"`
+    CreatedAt int64  `json:"createdAt"` // seconds since epoch
+}
+e := Event{ID: 1, Name: "Go Meetup", CreatedAt: time.Now().Unix()}
+```
+
+### 2) Accept ms from client → normalize to time.Time
+
+```go
+var payload struct {
+    StartAtMs int64 `json:"startAtMs"`
+}
+_ = c.ShouldBindJSON(&payload)
+start := time.Unix(0, payload.StartAtMs*int64(time.Millisecond))
+```
+
+### 3) TTL / expiration
+
+```go
+exp := time.Now().Unix() + 3600 // +1 hour (seconds)
+```
+
+---
+
+# Monotonic time vs. Unix time (IMPORTANT)
+
+* `time.Time` in Go can carry a **monotonic clock** reading for **duration measurements**.
+* **Use** `time.Since(start)` / `time.Until(t)` or `t2.Sub(t1)` to measure elapsed time.
+* **Don’t** compute elapsed time by subtracting Unix timestamps; wall clocks can jump (NTP, DST).
+
+```go
+start := time.Now()
+doWork()
+elapsed := time.Since(start) // correct; robust to clock changes
+```
+
+Calling `Unix()` / formatting **drops** the monotonic part — that’s expected.
+
+---
+
+# Edge cases & pitfalls
+
+1. **Time zone confusion**
+   Store epoch in UTC; convert to user’s zone at the edge (UI).
+
+2. **Milliseconds vs. seconds mixups**
+   If a timestamp seems “in 1970”, you probably treated **ms as s**.
+   If it’s “way in the future”, you probably treated **s as ms**.
+
+3. **Overflow concerns**
+
+   * `int64` **nanoseconds** since 1970 will overflow around year **2262**.
+   * `seconds` and `milliseconds` are safe for far longer with `int64`.
+
+4. **SQLite helpers** (if you use SQLite)
+
+   * Save as `INTEGER` seconds and use `datetime(created_at, 'unixepoch')` to render.
+   * Or use Go to format.
+
+---
+
+# Handy utilities you’ll reuse
+
+```go
+// Now (UTC) as seconds
+func NowSec() int64 { return time.Now().UTC().Unix() }
+
+// Convert seconds → time in a zone
+func SecToTimeIn(sec int64, tz string) (time.Time, error) {
+    loc, err := time.LoadLocation(tz)
+    if err != nil { return time.Time{}, err }
+    return time.Unix(sec, 0).In(loc), nil
+}
+
+// Parse epoch (ms) string → time.Time (UTC)
+func ParseMsStringToTimeUTC(s string) (time.Time, error) {
+    ms, err := strconv.ParseInt(s, 10, 64)
+    if err != nil { return time.Time{}, err }
+    return time.Unix(0, ms*int64(time.Millisecond)).UTC(), nil
+}
+```
+
+---
+
+# Quick reference (cheat list)
+
+* Now: `time.Now()`
+* Seconds since epoch: `t.Unix()`
+* Milliseconds since epoch: `t.UnixMilli()`
+* From seconds: `time.Unix(sec, 0)`
+* From ms: `time.Unix(0, ms*int64(time.Millisecond))`
+* To specific TZ: `t.In(loc)`
+* Format: `t.Format(time.RFC3339)`
+* Parse layout/string: `time.Parse(layout, s)`
+* Measure durations: `time.Since(start)` / `t2.Sub(t1)`
+
+---
+
+
