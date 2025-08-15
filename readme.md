@@ -3616,3 +3616,230 @@ if err != nil {
 
 ---
 
+Alright — let’s deep dive into **Go’s `time` package** and **time handling** so we can confidently work with dates, durations, timers, and formatting.
+
+We’ll go step by step, covering *everything* with examples.
+
+---
+
+## **1. Importing the Package**
+
+```go
+import "time"
+```
+
+The `time` package is part of Go’s standard library, so no extra installation is needed.
+
+---
+
+## **2. Getting the Current Time**
+
+```go
+now := time.Now()
+fmt.Println(now) // e.g., 2025-08-09 14:23:45.123456 +0530 IST
+```
+
+* Returns a `time.Time` object.
+* Includes date, time, timezone, and location.
+
+---
+
+## **3. Creating Specific Times**
+
+```go
+t := time.Date(2025, time.August, 30, 12, 0, 0, 0, time.UTC)
+fmt.Println(t) // 2025-08-30 12:00:00 +0000 UTC
+```
+
+**Parameters**:
+`year, month, day, hour, min, sec, nsec, location`
+
+---
+
+## **4. Parsing & Formatting Time**
+
+Go uses **reference time**:
+
+```
+Mon Jan 2 15:04:05 MST 2006
+```
+
+* The numbers must be exactly this date & time to define a format.
+
+### **Formatting**
+
+```go
+fmt.Println(now.Format("2006-01-02 15:04:05"))
+fmt.Println(now.Format("02-Jan-2006"))
+```
+
+### **Parsing**
+
+```go
+layout := "2006-01-02 15:04:05"
+t, err := time.Parse(layout, "2025-08-09 18:30:00")
+if err != nil {
+    fmt.Println("Error:", err)
+}
+fmt.Println(t)
+```
+
+---
+
+## **5. Time Zones**
+
+```go
+loc, _ := time.LoadLocation("America/New_York")
+ny := now.In(loc)
+fmt.Println(ny)
+```
+
+* Time zones come from the system’s `zoneinfo` database.
+
+---
+
+## **6. Getting Time Components**
+
+```go
+fmt.Println(now.Year())       // 2025
+fmt.Println(now.Month())      // August
+fmt.Println(now.Day())        // 9
+fmt.Println(now.Weekday())    // Saturday
+fmt.Println(now.Hour())       // 14
+fmt.Println(now.Minute())     // 23
+fmt.Println(now.Second())     // 45
+```
+
+---
+
+## **7. Comparing Times**
+
+```go
+t1 := time.Now()
+time.Sleep(2 * time.Second)
+t2 := time.Now()
+
+fmt.Println(t2.After(t1))  // true
+fmt.Println(t1.Before(t2)) // true
+fmt.Println(t1.Equal(t2))  // false
+```
+
+---
+
+## **8. Durations**
+
+`time.Duration` is a type representing nanoseconds.
+
+```go
+d := 2 * time.Hour
+fmt.Println(d.Hours())       // 2
+fmt.Println(d.Minutes())     // 120
+fmt.Println(d.Seconds())     // 7200
+```
+
+---
+
+## **9. Adding & Subtracting Time**
+
+```go
+fmt.Println(now.Add(48 * time.Hour)) // Add 2 days
+fmt.Println(now.Add(-time.Hour))     // Subtract 1 hour
+fmt.Println(now.Sub(t1))             // Difference
+```
+
+---
+
+## **10. Timers**
+
+A timer triggers once after a set duration.
+
+```go
+timer := time.NewTimer(3 * time.Second)
+<-timer.C
+fmt.Println("3 seconds passed")
+```
+
+---
+
+## **11. Tickers**
+
+A ticker triggers repeatedly at intervals.
+
+```go
+ticker := time.NewTicker(2 * time.Second)
+go func() {
+    for t := range ticker.C {
+        fmt.Println("Tick at", t)
+    }
+}()
+time.Sleep(7 * time.Second)
+ticker.Stop()
+```
+
+---
+
+## **12. Sleeping**
+
+```go
+time.Sleep(5 * time.Second) // Pause execution
+```
+
+---
+
+## **13. Measuring Execution Time**
+
+```go
+start := time.Now()
+time.Sleep(1 * time.Second)
+elapsed := time.Since(start)
+fmt.Println("Execution time:", elapsed)
+```
+
+---
+
+## **14. UTC vs Local Time**
+
+```go
+fmt.Println(now.UTC())   // Convert to UTC
+fmt.Println(now.Local()) // Convert to local timezone
+```
+
+---
+
+## **15. Unix Timestamps**
+
+```go
+fmt.Println(now.Unix())      // Seconds since Jan 1 1970
+fmt.Println(now.UnixMilli()) // Milliseconds
+fmt.Println(now.UnixNano())  // Nanoseconds
+```
+
+Convert from Unix:
+
+```go
+t := time.Unix(1733790000, 0)
+fmt.Println(t)
+```
+
+---
+
+✅ **Summary Table — Common Functions in `time`**
+
+| Function/Method          | Purpose               |
+| ------------------------ | --------------------- |
+| `time.Now()`             | Get current time      |
+| `time.Date()`            | Create custom time    |
+| `time.Parse()`           | Convert string → time |
+| `t.Format()`             | Convert time → string |
+| `t.Year()`, `.Month()`   | Extract components    |
+| `t.After()`, `.Before()` | Compare times         |
+| `t.Add()`, `.Sub()`      | Add/subtract time     |
+| `time.Since()`           | Elapsed time          |
+| `time.Sleep()`           | Pause execution       |
+| `time.NewTimer()`        | Run once after delay  |
+| `time.NewTicker()`       | Repeat at intervals   |
+| `t.Unix()`               | Unix timestamp        |
+| `t.In(location)`         | Convert timezone      |
+
+---
+
