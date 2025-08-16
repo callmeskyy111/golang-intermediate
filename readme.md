@@ -4318,3 +4318,209 @@ fmt.Println(randomString(12)) // "aX9rTzQ1PmLd"
 * **Need security (tokens, passwords)?** → `crypto/rand`
 
 ---
+
+Perfect topic 🚀 — `strconv` is one of those core Go packages we keep using but often only know bits of. Let’s go **all in** and break it down in detail.
+
+---
+
+# 📦 `strconv` Package in Go
+
+The **`strconv`** package in Go is used to **convert between strings and other basic data types** (integers, floats, booleans, etc.).
+Think of it as the bridge between `"123"` (string) and `123` (int).
+
+---
+
+## ✨ Major Functions in `strconv`
+
+### 🔹 1. String ↔ Integer
+
+* **`strconv.Atoi(s string) (int, error)`**
+
+  * Converts a string to an `int`.
+  * Simple shortcut for `strconv.ParseInt(s, 10, 0)`.
+
+```go
+i, err := strconv.Atoi("42")
+fmt.Println(i) // 42
+```
+
+---
+
+* **`strconv.Itoa(i int) string`**
+
+  * Converts an `int` to a string.
+
+```go
+s := strconv.Itoa(42)
+fmt.Println(s) // "42"
+```
+
+---
+
+* **`strconv.ParseInt(s string, base int, bitSize int)`**
+
+  * More powerful, can handle bases and different integer sizes.
+  * `bitSize` can be `0, 8, 16, 32, 64`.
+
+```go
+n, err := strconv.ParseInt("1010", 2, 64) // binary
+fmt.Println(n) // 10
+```
+
+---
+
+* **`strconv.FormatInt(i int64, base int)`**
+
+  * Converts int64 → string in any base (2 to 36).
+
+```go
+s := strconv.FormatInt(255, 16)
+fmt.Println(s) // "ff"
+```
+
+---
+
+### 🔹 2. String ↔ Unsigned Integer
+
+* **`strconv.ParseUint(s string, base int, bitSize int)`**
+* **`strconv.FormatUint(i uint64, base int)`**
+
+```go
+u, _ := strconv.ParseUint("FF", 16, 64)
+fmt.Println(u) // 255
+
+s := strconv.FormatUint(255, 2)
+fmt.Println(s) // "11111111"
+```
+
+---
+
+### 🔹 3. String ↔ Float
+
+* **`strconv.ParseFloat(s string, bitSize int)`**
+
+  * Parses a string into float32/64 depending on `bitSize`.
+
+```go
+f, _ := strconv.ParseFloat("3.14159", 64)
+fmt.Println(f) // 3.14159
+```
+
+---
+
+* **`strconv.FormatFloat(f float64, fmt byte, prec, bitSize int)`**
+
+  * Converts float → string with control over formatting.
+
+Params:
+
+* `fmt`: `'f'` (decimal), `'e'` (scientific), `'g'` (compact)
+* `prec`: number of digits after decimal (`-1` means auto)
+* `bitSize`: `32` or `64`
+
+```go
+s := strconv.FormatFloat(3.14159, 'f', 2, 64)
+fmt.Println(s) // "3.14"
+```
+
+---
+
+### 🔹 4. String ↔ Boolean
+
+* **`strconv.ParseBool(s string)`**
+
+  * Accepts: `"1"`, `"t"`, `"T"`, `"true"`, `"TRUE"`, `"True"` → true
+    `"0"`, `"f"`, `"F"`, `"false"`, `"FALSE"`, `"False"` → false
+
+```go
+b, _ := strconv.ParseBool("true")
+fmt.Println(b) // true
+```
+
+---
+
+* **`strconv.FormatBool(b bool)`**
+
+  * Converts bool → `"true"` / `"false"`
+
+```go
+s := strconv.FormatBool(false)
+fmt.Println(s) // "false"
+```
+
+---
+
+### 🔹 5. Quote & Unquote (escaping strings)
+
+* **`strconv.Quote(s string)`**
+
+  * Returns a **double-quoted Go string literal** with escapes.
+
+```go
+s := strconv.Quote("Hello\tWorld")
+fmt.Println(s) // "\"Hello\tWorld\""
+```
+
+---
+
+* **`strconv.QuoteToASCII(s string)`**
+
+  * Escapes non-ASCII chars.
+
+```go
+s := strconv.QuoteToASCII("こんにちは")
+fmt.Println(s) // "\"\\u3053\\u3093\\u306b\\u3061\\u306f\""
+```
+
+---
+
+* **`strconv.Unquote(s string)`**
+
+  * Removes surrounding quotes and interprets escapes.
+
+```go
+s, _ := strconv.Unquote("\"Hello\\tWorld\"")
+fmt.Println(s) // Hello	World
+```
+
+---
+
+### 🔹 6. Append Functions (efficient string building)
+
+Instead of creating a new string, these append to an existing `[]byte`.
+
+* **`strconv.AppendInt(dst []byte, i int64, base int) []byte`**
+* **`strconv.AppendFloat(...)`**
+* **`strconv.AppendBool(...)`**
+* **`strconv.AppendQuote(...)`**
+
+```go
+b := []byte("Number: ")
+b = strconv.AppendInt(b, 42, 10)
+fmt.Println(string(b)) // "Number: 42"
+```
+
+---
+
+## ⚡ Quick Overview Table
+
+| Conversion           | String → X          | X → String                       |
+| -------------------- | ------------------- | -------------------------------- |
+| **Int**              | `Atoi` / `ParseInt` | `Itoa` / `FormatInt`             |
+| **Uint**             | `ParseUint`         | `FormatUint`                     |
+| **Float**            | `ParseFloat`        | `FormatFloat`                    |
+| **Bool**             | `ParseBool`         | `FormatBool`                     |
+| **Quote**            | `Unquote`           | `Quote`, `QuoteToASCII`          |
+| **Efficient Append** | —                   | `AppendInt`, `AppendFloat`, etc. |
+
+---
+
+## 🔑 Key Points
+
+* Always check for **errors** when parsing (`ParseX`).
+* Use `Atoi` / `Itoa` for **simple int <-> string**.
+* Use `Format`/`Parse` variants for **control (base, precision, bit size)**.
+* Use `AppendX` when building strings efficiently in loops.
+* `Quote` / `Unquote` are helpful for safe string literals and JSON-like escaping.
+
+---
