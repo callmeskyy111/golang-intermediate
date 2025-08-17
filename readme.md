@@ -4964,3 +4964,228 @@ It’s one of the most **practical packages** in Go — almost every Go project 
 
 ---
 
+**Base64 encoding/decoding** is a very common need (storing/transmitting binary data like images, PDFs, or credentials in JSON, XML, or HTTP).
+Go provides full support in the `encoding/base64` package.
+
+---
+
+# 📦 Base64 in Go
+
+## 🔹 What is Base64?
+
+* A way to represent **binary data as ASCII text**.
+* Takes 3 bytes (24 bits) of input and encodes them into 4 characters (6 bits each).
+* Safe for transmission in:
+
+  * URLs
+  * JSON, XML
+  * Email (MIME encoding)
+* Output always consists of **A–Z, a–z, 0–9, +, /** (or `-` and `_` for URL-safe).
+
+---
+
+## 🔹 Go’s `encoding/base64` Package
+
+The package provides:
+
+* **Standard encoding** → Uses `+` and `/`.
+* **URL-safe encoding** → Uses `-` and `_`.
+* **WithPadding / NoPadding** → Handles `=` padding.
+
+---
+
+## 🔹 Common Encoders
+
+```go
+var StdEncoding = NewEncoding(encodeStd)       // A-Z, a-z, 0-9, +, /
+var URLEncoding = NewEncoding(encodeURL)       // A-Z, a-z, 0-9, -, _
+var RawStdEncoding = StdEncoding.WithPadding(NoPadding)
+var RawURLEncoding = URLEncoding.WithPadding(NoPadding)
+```
+
+---
+
+## 🔹 Encoding
+
+### ✅ Example: Encode to Base64 String
+
+```go
+package main
+
+import (
+	"encoding/base64"
+	"fmt"
+)
+
+func main() {
+	data := "Hello, World!"
+	encoded := base64.StdEncoding.EncodeToString([]byte(data))
+	fmt.Println("Encoded:", encoded)
+}
+```
+
+👉 Output:
+
+```
+Encoded: SGVsbG8sIFdvcmxkIQ==
+```
+
+---
+
+### ✅ URL-Safe Encoding
+
+```go
+encoded := base64.URLEncoding.EncodeToString([]byte("https://golang.org?name=go"))
+fmt.Println(encoded)
+```
+
+👉 Output (no `+` or `/`):
+
+```
+aHR0cHM6Ly9nb2xhbmcub3JnP25hbWU9Z28=
+```
+
+---
+
+### ✅ No Padding
+
+```go
+encoded := base64.RawURLEncoding.EncodeToString([]byte("Hello"))
+fmt.Println(encoded)
+```
+
+👉 Output (notice no `=` padding):
+
+```
+SGVsbG8
+```
+
+---
+
+## 🔹 Decoding
+
+### ✅ Decode Base64 String
+
+```go
+decoded, err := base64.StdEncoding.DecodeString("SGVsbG8sIFdvcmxkIQ==")
+if err != nil {
+    panic(err)
+}
+fmt.Println("Decoded:", string(decoded))
+```
+
+👉 Output:
+
+```
+Decoded: Hello, World!
+```
+
+---
+
+### ✅ Decode URL-Safe Base64
+
+```go
+decoded, _ := base64.URLEncoding.DecodeString("aHR0cHM6Ly9nb2xhbmcub3JnP25hbWU9Z28=")
+fmt.Println("Decoded:", string(decoded))
+```
+
+👉 Output:
+
+```
+Decoded: https://golang.org?name=go
+```
+
+---
+
+## 🔹 Streaming Encoders/Decoders
+
+Sometimes we don’t want to load all data in memory (large files).
+We can **wrap `io.Writer` or `io.Reader`** with Base64.
+
+### ✅ Encode Stream
+
+```go
+package main
+
+import (
+	"encoding/base64"
+	"os"
+	"strings"
+)
+
+func main() {
+	data := "Stream encoding example"
+	encoder := base64.NewEncoder(base64.StdEncoding, os.Stdout)
+	defer encoder.Close()
+
+	encoder.Write([]byte(data))
+}
+```
+
+👉 Output:
+
+```
+U3RyZWFtIGVuY29kaW5nIGV4YW1wbGU=
+```
+
+---
+
+### ✅ Decode Stream
+
+```go
+package main
+
+import (
+	"encoding/base64"
+	"fmt"
+	"os"
+	"strings"
+)
+
+func main() {
+	input := "U3RyZWFtIGVuY29kaW5nIGV4YW1wbGU="
+	decoder := base64.NewDecoder(base64.StdEncoding, strings.NewReader(input))
+
+	buf := make([]byte, 1024)
+	n, _ := decoder.Read(buf)
+
+	fmt.Println("Decoded:", string(buf[:n]))
+}
+```
+
+👉 Output:
+
+```
+Decoded: Stream encoding example
+```
+
+---
+
+## 🔹 When to Use Which?
+
+| Encoding Type    | Use Case                                  |
+| ---------------- | ----------------------------------------- |
+| `StdEncoding`    | General encoding/decoding (default).      |
+| `URLEncoding`    | Safe for URLs and filenames (no `+` `/`). |
+| `RawStdEncoding` | No padding version of standard encoding.  |
+| `RawURLEncoding` | No padding, safe for URLs.                |
+
+---
+
+## ⚡ Important Notes
+
+✅ Base64 **increases size** by \~33% (every 3 bytes → 4 bytes).
+✅ Always handle **padding `=`** carefully if using `Raw` encodings.
+✅ Use **stream encoders/decoders** for large files instead of `EncodeToString()`.
+✅ Useful for binary-to-text conversions: images, JWT tokens, cryptographic keys.
+
+---
+
+## 🔹 Summary
+
+* Use `base64.StdEncoding` for default safe encoding.
+* Use `base64.URLEncoding` for URLs/filenames.
+* Use `NewEncoder`/`NewDecoder` for streaming large data.
+* Remember padding rules (`=` vs Raw).
+
+---
