@@ -4736,3 +4736,231 @@ We usually deal with:
 
 ---
 
+`bufio` is one of the most **practical packages** in Go when working with input/output. It adds a **buffer layer** on top of readers and writers, making data handling faster and more efficient. Let’s go deep 👇
+
+---
+
+# 📦 `bufio` Package in Go
+
+## 🔹 What is `bufio`?
+
+* `bufio` stands for **buffered I/O**.
+* It **wraps `io.Reader` and `io.Writer` objects** (like files, network connections, or stdin/stdout).
+* Instead of reading/writing **one byte at a time**, it uses a **buffer in memory**, which:
+
+  * **Reduces system calls** (expensive operations).
+  * **Improves performance** when working with large data streams.
+* Very useful for reading text files line by line, scanning input, or writing lots of small chunks efficiently.
+
+---
+
+## 🔹 Core Types in `bufio`
+
+### 1. **Reader**
+
+* Provides buffered reading.
+* Common methods:
+
+  * `Read(p []byte)` – reads into a byte slice.
+  * `ReadString(delim byte)` – reads until a delimiter.
+  * `ReadBytes(delim byte)` – like `ReadString` but returns `[]byte`.
+  * `ReadLine()` – reads a single line (without newline).
+  * `Peek(n int)` – looks ahead without consuming.
+  * `UnreadByte()` – pushes one byte back.
+
+---
+
+### 2. **Writer**
+
+* Provides buffered writing.
+* Instead of writing to the underlying writer each time, it **stores data in a buffer** and writes when:
+
+  * The buffer is full
+  * `Flush()` is explicitly called
+* Common methods:
+
+  * `Write(p []byte)` – writes byte slice to buffer.
+  * `WriteString(s string)` – writes string to buffer.
+  * `Flush()` – pushes buffered data to underlying writer.
+
+---
+
+### 3. **Scanner**
+
+* High-level, line-by-line or token-based reader.
+* Wraps a `Reader` and **splits input by a scanning function** (default: lines).
+* Common methods:
+
+  * `Scan()` – advances to next token (returns `false` at EOF).
+  * `Text()` – returns the token as a string.
+  * `Bytes()` – returns the token as `[]byte`.
+  * `Split(splitFunc)` – defines how to split input (lines, words, custom).
+
+---
+
+## 🔹 Examples
+
+### ✅ Buffered Reader Example
+
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	file, err := os.Open("sample.txt")
+	if err != nil {
+		panic(err)
+	}
+	defer file.Close()
+
+	reader := bufio.NewReader(file)
+
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Println("EOF reached or error:", err)
+	}
+	fmt.Println("Line read:", line)
+}
+```
+
+👉 Reads one line at a time from a file.
+
+---
+
+### ✅ Buffered Writer Example
+
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	file, _ := os.Create("output.txt")
+	defer file.Close()
+
+	writer := bufio.NewWriter(file)
+
+	writer.WriteString("Hello, World!\n")
+	writer.WriteString("Buffered writing is fast!\n")
+
+	writer.Flush() // must flush, otherwise data stays in buffer
+	fmt.Println("Data written to file")
+}
+```
+
+👉 Writes efficiently and flushes once.
+
+---
+
+### ✅ Scanner Example (Reading Line by Line)
+
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+)
+
+func main() {
+	file, _ := os.Open("sample.txt")
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		fmt.Println("Line:", scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Println("Error:", err)
+	}
+}
+```
+
+👉 Clean and idiomatic way to read text files line by line.
+
+---
+
+### ✅ Scanner Example (Custom Split Function)
+
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"strings"
+)
+
+func main() {
+	text := "one,two,three,four"
+	scanner := bufio.NewScanner(strings.NewReader(text))
+
+	// Custom split by commas
+	scanner.Split(func(data []byte, atEOF bool) (advance int, token []byte, err error) {
+		for i := 0; i < len(data); i++ {
+			if data[i] == ',' {
+				return i + 1, data[:i], nil
+			}
+		}
+		if atEOF && len(data) > 0 {
+			return len(data), data, nil
+		}
+		return 0, nil, nil
+	})
+
+	for scanner.Scan() {
+		fmt.Println("Token:", scanner.Text())
+	}
+}
+```
+
+👉 Shows how to tokenize input with custom rules.
+
+---
+
+## 🔹 When to Use What?
+
+* **Reader** → when you want low-level control (peek, read until a delimiter, etc.).
+* **Writer** → when writing lots of small chunks; remember to `Flush()`.
+* **Scanner** → when reading line by line or word by word (most common for text files).
+
+---
+
+## ⚡ Important Notes (Do’s ✅ / Don’ts ❌)
+
+### ✅ Do’s
+
+* Use `Scanner` for reading **line by line** or **words**.
+* Always **check for errors** (`scanner.Err()`, `reader.Read…()`).
+* Always call `writer.Flush()` after writing.
+* Prefer `bufio.Writer` for large writes with small chunks (performance boost).
+
+### ❌ Don’ts
+
+* Don’t forget to `Flush()` → data will stay in memory buffer.
+* Don’t use `Scanner` for **huge tokens** (it has a default 64KB limit per token; can be increased via `scanner.Buffer()`).
+* Don’t assume `ReadLine()` reads the whole line — it may split if too long.
+
+---
+
+## ⚡ Summary
+
+* `bufio.Reader` → efficient buffered input (supports peeking, reading until delimiters).
+* `bufio.Writer` → efficient buffered output (must `Flush()`).
+* `bufio.Scanner` → easy line/word/token reading, customizable with `Split`.
+
+It’s one of the most **practical packages** in Go — almost every Go project working with files or network streams uses it.
+
+---
+
