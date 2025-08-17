@@ -4524,3 +4524,215 @@ fmt.Println(string(b)) // "Number: 42"
 * `Quote` / `Unquote` are helpful for safe string literals and JSON-like escaping.
 
 ---
+URL parsing in Go is an **essential skill** because almost every web-related program (HTTP clients, APIs, servers) requires dealing with URLs. Go gives us a **robust package** for this:
+
+---
+
+# 🌍 URL Parsing in Go (`net/url`)
+
+The Go standard library has the **`net/url`** package for:
+
+* Parsing URLs into components (`scheme`, `host`, `path`, `query`, `fragment`, etc.)
+* Building and modifying URLs
+* Encoding/decoding query parameters
+* Ensuring URLs are properly escaped
+
+---
+
+## 🔹 Basic Structure of a URL
+
+```
+scheme://[userinfo@]host/path[?query][#fragment]
+```
+
+Example:
+
+```
+https://user:pass@www.example.com:8080/search?q=golang#section2
+```
+
+Breakdown:
+
+* **scheme** → `https`
+* **userinfo** → `user:pass`
+* **host** → `www.example.com:8080`
+
+  * host **name** → `www.example.com`
+  * host **port** → `8080`
+* **path** → `/search`
+* **query** → `q=golang`
+* **fragment** → `section2`
+
+---
+
+## 🔹 Parsing URLs
+
+### `url.Parse(rawurl string) (*url.URL, error)`
+
+Parses a string into a `*url.URL` struct.
+
+```go
+package main
+
+import (
+	"fmt"
+	"net/url"
+)
+
+func main() {
+	rawURL := "https://user:pass@www.example.com:8080/search?q=golang#section2"
+	parsed, err := url.Parse(rawURL)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Scheme:", parsed.Scheme)       // https
+	fmt.Println("User:", parsed.User)           // user:pass
+	fmt.Println("Username:", parsed.User.Username()) // user
+	pass, _ := parsed.User.Password()
+	fmt.Println("Password:", pass)              // pass
+	fmt.Println("Host:", parsed.Host)           // www.example.com:8080
+	fmt.Println("Hostname:", parsed.Hostname()) // www.example.com
+	fmt.Println("Port:", parsed.Port())         // 8080
+	fmt.Println("Path:", parsed.Path)           // /search
+	fmt.Println("RawQuery:", parsed.RawQuery)   // q=golang
+	fmt.Println("Fragment:", parsed.Fragment)   // section2
+}
+```
+
+---
+
+## 🔹 Working with Query Parameters
+
+### Parse queries from URL
+
+```go
+values, _ := url.ParseQuery("q=golang&lang=en&lang=fr")
+
+fmt.Println(values.Get("q"))       // "golang"
+fmt.Println(values["lang"])        // [en fr]
+```
+
+---
+
+### Extract from URL object
+
+```go
+parsed, _ := url.Parse("https://example.com/search?q=golang&lang=en")
+query := parsed.Query()
+fmt.Println(query.Get("q")) // golang
+```
+
+---
+
+### Modify Queries
+
+```go
+q := parsed.Query()
+q.Set("q", "golang tutorials")
+q.Add("page", "2")
+parsed.RawQuery = q.Encode()
+
+fmt.Println(parsed.String())
+// https://example.com/search?q=golang+tutorials&page=2&lang=en
+```
+
+---
+
+## 🔹 Building URLs
+
+```go
+u := &url.URL{
+	Scheme:   "https",
+	Host:     "www.example.com",
+	Path:     "docs",
+	RawQuery: "q=golang",
+	Fragment: "intro",
+}
+
+fmt.Println(u.String())
+// https://www.example.com/docs?q=golang#intro
+```
+
+---
+
+## 🔹 URL Escaping & Unescaping
+
+To safely embed values in URLs (spaces, special characters, etc.), we use:
+
+* **`url.QueryEscape(s string) string`**
+  Escapes a string so it’s safe in query parameters.
+
+```go
+escaped := url.QueryEscape("golang tutorials & examples")
+fmt.Println(escaped) // golang+tutorials+%26+examples
+```
+
+---
+
+* **`url.QueryUnescape(s string) (string, error)`**
+  Decodes back to original.
+
+```go
+decoded, _ := url.QueryUnescape("golang+tutorials+%26+examples")
+fmt.Println(decoded) // golang tutorials & examples
+```
+
+---
+
+## 🔹 Relative vs Absolute URLs
+
+* **Absolute URL** → has scheme + host
+* **Relative URL** → path only, must resolve against base
+
+### Resolving Relative URLs
+
+```go
+base, _ := url.Parse("https://example.com/docs/")
+ref, _ := url.Parse("../about")
+
+resolved := base.ResolveReference(ref)
+fmt.Println(resolved.String()) // https://example.com/about
+```
+
+---
+
+## 🔹 The `url.URL` Struct
+
+The main struct has these fields:
+
+```go
+type URL struct {
+    Scheme     string
+    Opaque     string
+    User       *Userinfo
+    Host       string
+    Path       string
+    RawPath    string
+    ForceQuery bool
+    RawQuery   string
+    Fragment   string
+}
+```
+
+We usually deal with:
+
+* `Scheme`
+* `User`
+* `Host`, `Hostname()`, `Port()`
+* `Path`
+* `RawQuery` / `Query()`
+* `Fragment`
+
+---
+
+## ⚡ Key Points to Remember
+
+1. Use **`url.Parse`** to safely break down URLs.
+2. Use **`url.ParseQuery`** or `parsed.Query()` for query params.
+3. Always reassign `parsed.RawQuery = q.Encode()` after modifying queries.
+4. Escape untrusted input with **`url.QueryEscape`**.
+5. Use `ResolveReference` for relative → absolute URL resolution.
+
+---
+
