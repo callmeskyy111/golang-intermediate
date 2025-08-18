@@ -19,6 +19,8 @@ import (
 
 // salting: Adding some value with the hashed-password for extra security. (protection against dictionary attacks, rainbow-table attacks)
 
+// ⚠️ Use crypto/rand rather than math/rand, for security purposes 🔴 - SEEDING not require with crypto, as it uses high-level of entropy
+
 func main() {
 	password:="password123"
 	hashed:= sha256.Sum256([]byte(password)) // accepts bytes
@@ -39,18 +41,43 @@ func main() {
 	fmt.Println("--------------- SALTING🛡️ ---------------")
 	
 	salt,err:=GenSalt()
+	fmt.Println("Original Salt:",string(salt))
+	fmt.Printf("Original Salt in HEX: %x\n",salt)
 	if err!=nil{
 			fmt.Println("🔴ERROR generating salt:",err)
 			return
 		}
 	
 	// hash the password with salt
-	hash:=HashPassword(password,salt)
+	signupHash:=HashPassword(password,salt)
+	// signupHash:=HashPassword("password124",salt) // 🔴 ERROR
 	
-	// store the salt and password in DB (mocking that here for now)
+	// store the salt and password in DB (mocking that here for now..)
 	saltStr:=base64.StdEncoding.EncodeToString(salt)
 	fmt.Println("Salt:",saltStr)
-	fmt.Println("Hash:",hash)
+	fmt.Println("Hash:",signupHash)
+
+	hashOriginalPassword:= sha256.Sum256([]byte(password))
+	fmt.Println("Hash of just the password-string without salt:",base64.StdEncoding.EncodeToString(hashOriginalPassword[:]))
+
+
+	// verify after logging in
+	// retrieve the saltStr and decode it
+	decodedSalt,err:= base64.StdEncoding.DecodeString(saltStr) // simulating a DB storage
+	if err!=nil{
+			fmt.Println("🔴ERROR decoding:",err)
+			return
+		}
+	loginHash:= HashPassword(password, decodedSalt)
+
+	// Compare the stored signupHash with the loginHash	
+	if signupHash==loginHash{
+		fmt.Println("Password is correct. You are logged in ✅")
+		// then send the user to the appropriate end-point (dashboard, signIn etc.)
+	}else{
+		fmt.Println("🔴 Login failed.. Please check user credentials! ⚠️")
+		// real-world generic message, not letting the user know whether pasword, email or username is incorrect
+	}
 
 
 
