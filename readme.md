@@ -5189,3 +5189,257 @@ Decoded: Stream encoding example
 * Remember padding rules (`=` vs Raw).
 
 ---
+
+Let’s walk through **hashing in Go** end-to-end, from concepts to idiomatic code.
+
+# What hashing is (and why we care)
+
+A **hash function** maps data of any size to a **fixed-size digest** (aka hash). Good cryptographic hashes have these properties:
+
+* **Deterministic**: same input → same output.
+* **Preimage resistance**: given a hash, it’s hard to find a message that produces it.
+* **Second-preimage resistance**: given one message, it’s hard to find a *different* message with the same hash.
+* **Collision resistance**: it’s hard to find *any* two different messages with the same hash.
+* **Avalanche**: tiny input changes radically change the output.
+
+We reach for hashing to:
+
+* Verify **integrity** (file checksums, content addressing).
+* Create **fingerprints** (deduplication, caching keys).
+* Build **MACs** (HMAC) for message authenticity.
+* **Never** store passwords as plain text—use **password hashing** (bcrypt/argon2/scrypt), not general-purpose hashing.
+
+# Hashing families in Go
+
+Standard library (safe defaults in bold):
+
+* `crypto/sha256` → **SHA-256** (32-byte digest) – general secure default.
+* `crypto/sha512` → SHA-512 (64-byte), plus variants like `Sum512_256` (32-byte).
+* `crypto/sha1` → SHA-1 (collision-broken; avoid for security).
+* `crypto/md5` → MD5 (collision-broken; only for non-security fingerprints).
+* `hash/crc32`, `hash/crc64`, `hash/adler32` → fast **checksums** for accidental error detection (not secure).
+
+Common extra (in `golang.org/x/crypto`, add as a module dep):
+
+* `blake2b`, `blake2s` – fast, secure; keyed mode can replace HMAC.
+* `sha3`/`keccak` – modern hash family.
+* Password hashing: `bcrypt`, `scrypt`, `argon2`.
+
+# Two APIs we use
+
+Go gives us two idioms:
+
+### 1) One-shot “Sum” helpers (simple)
+
+```go
+import (
+	"crypto/sha256"
+	"fmt"
+)
+
+func digestBytes(b []byte) string {
+	h := sha256.Sum256(b)         // returns [32]byte
+	return fmt.Sprintf("%x", h[:]) // hex encode
+}
+```
+
+### 2) Streaming via `hash.Hash` (for large data / incremental)
+
+Every `xxx.New()` in `crypto/*` returns a `hash.Hash` which is also an `io.Writer`.
+
+```go
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"hash"
+	"io"
+	"os"
+)
+
+func digestFile(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil { return "", err }
+	defer f.Close()
+
+	var h hash.Hash = sha256.New()
+	if _, err := io.Copy(h, f); err != nil { // stream the file
+		return "", err
+	}
+	sum := h.Sum(nil)              // appends digest to provided slice (nil → new)
+	return hex.EncodeToString(sum), nil
+}
+```
+
+> Note: `h.Sum(dst)` **appends** the digest to `dst`. We pass `nil` to get just the digest.
+
+# Encoding the digest (hex/base64)
+
+We rarely keep raw bytes. We typically encode as hex:
+
+```go
+import "encoding/hex"
+
+hexStr := hex.EncodeToString(sumBytes)
+b, err := hex.DecodeString(hexStr)
+```
+
+Or base64:
+
+```go
+import "encoding/base64"
+
+b64 := base64.StdEncoding.EncodeToString(sumBytes)
+raw, _ := base64.StdEncoding.DecodeString(b64)
+```
+
+# HMAC (message authentication)
+
+For authenticity + integrity with a shared secret, we use **HMAC**:
+
+```go
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+)
+
+func sign(msg, key []byte) []byte {
+	mac := hmac.New(sha256.New, key)
+	mac.Write(msg)
+	return mac.Sum(nil)
+}
+
+func verify(msg, key, tag []byte) bool {
+	m := hmac.New(sha256.New, key)
+	m.Write(msg)
+	expected := m.Sum(nil)
+	return hmac.Equal(tag, expected) // constant-time compare
+}
+```
+
+# Password hashing (different from hashing!)
+
+We **must not** use SHA-256/MD5/etc. for passwords. We use **slow, memory-hard** algorithms that include salts and cost parameters.
+
+### Bcrypt (Go’s most common)
+
+```go
+import "golang.org/x/crypto/bcrypt"
+
+func hashPassword(pw string) (string, error) {
+	// cost 10–14; higher = slower = stronger
+	hash, err := bcrypt.GenerateFromPassword([]byte(pw), 14)
+	return string(hash), err
+}
+
+func checkPassword(pw string, stored string) bool {
+	// IMPORTANT: (hashed, password) order
+	return bcrypt.CompareHashAndPassword([]byte(stored), []byte(pw)) == nil
+}
+```
+
+> Bcrypt **embeds a salt and cost** in the hash string; we just store that string.
+
+### Argon2id (modern, memory-hard)
+
+```go
+import (
+	"crypto/rand"
+	"encoding/base64"
+	"fmt"
+	"golang.org/x/crypto/argon2"
+)
+
+func hashArgon2id(pw string) (string, error) {
+	salt := make([]byte, 16)
+	if _, err := rand.Read(salt); err != nil { return "", err }
+
+	// Tunable params (example values):
+	memKB := uint32(64 * 1024) // 64MB
+	iterations := uint32(3)
+	parallel := uint8(2)
+	keyLen := uint32(32)
+
+	key := argon2.IDKey([]byte(pw), salt, iterations, memKB, parallel, keyLen)
+	return fmt.Sprintf("argon2id$%d$%d$%d$%s$%s",
+		iterations, memKB, parallel,
+		base64.RawStdEncoding.EncodeToString(salt),
+		base64.RawStdEncoding.EncodeToString(key),
+	), nil
+}
+```
+
+> With Argon2 we store: algorithm, params, salt, derived key. On verify, we parse them back and recompute.
+
+# Choosing an algorithm
+
+* **General integrity / fingerprints**: SHA-256 or SHA-512/256 (good default, widely supported).
+* **Fast, modern alternative**: BLAKE2 (via `x/crypto/blake2b/blake2s`).
+* **Non-security checks** (e.g., accidental corruption): CRC32/64 (very fast).
+* **Passwords**: bcrypt (simple & standard) or Argon2id (preferred when we can manage params).
+* **MACs**: HMAC-SHA-256 (interoperable, battle-tested).
+* **Avoid** MD5 & SHA-1 for new security designs (collision attacks).
+
+# Common pitfalls (and fixes)
+
+* **Mixing up bcrypt args**: we must pass `(hashed, password)` to `CompareHashAndPassword`. (We hit this earlier!)
+* **Reusing `hash.Hash`** across goroutines: instances aren’t safe for concurrent `Write`.
+* **Using raw `==`** for MACs: use `hmac.Equal` (constant-time).
+* **Hex vs bytes confusion**: printing a byte slice with `%x` is hex; storing that string requires decoding back if we need bytes again.
+* **Assuming “hash = encryption”**: hashing is one-way; we can’t “decrypt” a hash.
+
+# Full examples
+
+### 1) Hash a string (one-shot)
+
+```go
+data := []byte("hello, hashing")
+sum := sha256.Sum256(data)  // [32]byte
+fmt.Printf("SHA-256: %x\n", sum)
+```
+
+### 2) Hash a large file (streaming)
+
+```go
+f, _ := os.Open("big.bin")
+defer f.Close()
+h := sha512.New()
+io.Copy(h, f)
+fmt.Printf("SHA-512: %x\n", h.Sum(nil))
+```
+
+### 3) HMAC over JSON payload
+
+```go
+payload := []byte(`{"ok":true}`)
+key := []byte("our-shared-secret")
+tag := sign(payload, key)
+fmt.Printf("HMAC: %x\n", tag)
+```
+
+### 4) Store & verify a password (bcrypt)
+
+```go
+stored, _ := hashPassword("s3cret!")
+ok := checkPassword("s3cret!", stored)   // true
+bad := checkPassword("wrong", stored)    // false
+```
+
+# Performance tips
+
+* For repeated small messages, reuse the hasher: `h.Reset()` between uses to reduce allocations.
+* For very large inputs, let `io.Copy(h, r)` stream rather than reading whole files into memory.
+* SHA-512 can be faster than SHA-256 on 64-bit CPUs; `sha512.Sum512_256` yields a 32-byte digest with SHA-512’s speed.
+
+# Quick reference
+
+* **Hex**: `fmt.Printf("%x", sum)`, `hex.EncodeToString(sum)`.
+* **Base64**: `base64.StdEncoding.EncodeToString(sum)`.
+* **One-shot**: `sha256.Sum256(b)`.
+* **Stream**: `h := sha256.New(); h.Write(...); h.Sum(nil)`.
+* **HMAC**: `mac := hmac.New(sha256.New, key)`.
+* **Passwords**: `bcrypt.GenerateFromPassword`, `bcrypt.CompareHashAndPassword`.
+
+---
+
+
+
