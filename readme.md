@@ -5922,5 +5922,210 @@ func main() {
 
 ---
 
+In Go, working with files (reading/writing) revolves around the `os`, `io`, `ioutil` (deprecated, but still seen), and `bufio` packages.
+
+---
+
+# 🔹 1. Basics: Files in Go
+
+* Files are treated as a resource with a **file descriptor**.
+* Before reading or writing, we must **open** a file using `os.Open` (read-only) or `os.OpenFile` (custom flags).
+* Always `defer file.Close()` after opening — prevents leaks.
+
+---
+
+# 🔹 2. Opening a File
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	file, err := os.Open("example.txt") // read-only
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	defer file.Close() // ✅ Always close
+
+	fmt.Println("File opened successfully:", file.Name())
+}
+```
+
+---
+
+# 🔹 3. Reading from a File
+
+## (a) Read Whole File at Once
+
+```go
+data, err := os.ReadFile("example.txt") // replaces ioutil.ReadFile in Go 1.16+
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println(string(data)) // Convert []byte → string
+```
+
+✅ Simple, but loads the entire file into memory (not good for very large files).
+
+---
+
+## (b) Read with `bufio.Scanner` (line by line)
+
+```go
+file, _ := os.Open("example.txt")
+defer file.Close()
+
+scanner := bufio.NewScanner(file)
+for scanner.Scan() {
+	fmt.Println(scanner.Text()) // each line
+}
+
+if err := scanner.Err(); err != nil {
+	fmt.Println("Error:", err)
+}
+```
+
+✅ Best for reading logs, config files, etc.
+
+---
+
+## (c) Read with `file.Read()`
+
+```go
+buffer := make([]byte, 64) // read 64 bytes
+n, err := file.Read(buffer)
+if err != nil && err != io.EOF {
+	log.Fatal(err)
+}
+fmt.Printf("Read %d bytes: %s\n", n, string(buffer[:n]))
+```
+
+✅ Good for streaming raw data (binary files, large files).
+
+---
+
+# 🔹 4. Writing to a File
+
+## (a) Write Whole File
+
+```go
+data := []byte("Hello, Golang!\n")
+err := os.WriteFile("output.txt", data, 0644) // perms: rw-r--r--
+if err != nil {
+	log.Fatal(err)
+}
+```
+
+---
+
+## (b) Append or Create with `os.OpenFile`
+
+```go
+file, err := os.OpenFile("output.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+if err != nil {
+	log.Fatal(err)
+}
+defer file.Close()
+
+if _, err := file.WriteString("Appending new line!\n"); err != nil {
+	log.Fatal(err)
+}
+```
+
+Flags:
+
+* `os.O_CREATE` → create if not exists.
+* `os.O_APPEND` → append instead of overwrite.
+* `os.O_WRONLY` → write-only.
+* `os.O_RDWR` → read + write.
+* `os.O_TRUNC` → truncate existing file.
+
+---
+
+## (c) Buffered Writer
+
+```go
+file, _ := os.Create("buffered.txt")
+defer file.Close()
+
+writer := bufio.NewWriter(file)
+writer.WriteString("First line\n")
+writer.WriteString("Second line\n")
+writer.Flush() // ✅ must flush buffer
+```
+
+✅ Faster when writing lots of small data.
+
+---
+
+# 🔹 5. File Metadata
+
+```go
+info, err := os.Stat("example.txt")
+if err != nil {
+	log.Fatal(err)
+}
+fmt.Println("Name:", info.Name())
+fmt.Println("Size:", info.Size())
+fmt.Println("IsDir:", info.IsDir())
+fmt.Println("Permissions:", info.Mode())
+fmt.Println("Modified:", info.ModTime())
+```
+
+---
+
+# 🔹 6. File Paths
+
+```go
+import "path/filepath"
+
+abs, _ := filepath.Abs("example.txt")
+fmt.Println("Absolute path:", abs)
+```
+
+---
+
+# 🔹 7. Example: Copy File
+
+```go
+src, _ := os.Open("example.txt")
+defer src.Close()
+
+dst, _ := os.Create("copy.txt")
+defer dst.Close()
+
+_, err := io.Copy(dst, src) // copies contents
+if err != nil {
+	log.Fatal(err)
+}
+```
+
+---
+
+# 🔹 8. Best Practices (Jr. Engineers 🚀)
+
+1. Always `defer file.Close()`.
+2. Use `os.ReadFile` / `os.WriteFile` for **small files**.
+3. Use `bufio.Scanner` / `io.Reader` for **large files**.
+4. When writing in loops → use `bufio.Writer` + `Flush()`.
+5. Handle errors properly (don’t ignore them).
+6. Remember file permissions (e.g., `0644`).
+
+---
+
+✅ TL;DR
+
+* **Read small files** → `os.ReadFile`.
+* **Read big files** → `bufio.Scanner` or `Read()`.
+* **Write small files** → `os.WriteFile`.
+* **Write big files / appending** → `os.OpenFile` + `bufio.Writer`.
+* **Always close files**.
+
+---
 
 

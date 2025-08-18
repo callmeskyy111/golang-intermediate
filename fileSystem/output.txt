@@ -1,0 +1,2 @@
+Writing BYTE [ ]SLICE to output.txt
+
