@@ -1,5 +1,7 @@
 Writing BYTE [ ]SLICE to output.txt
 
-
+Some important info - LINE FILTER
 
 Hhhiii how r uu
+
+Golang is important

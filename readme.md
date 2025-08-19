@@ -6128,4 +6128,141 @@ if err != nil {
 
 ---
 
+Let’s go step by step and understand **line filters in Go**.
+
+---
+
+## 🔹 1. What is a Line Filter?
+
+A **line filter** is a program that:
+
+* Reads input **line by line** (from a file, stdin, or network).
+* Processes/transforms each line.
+* Writes the result **line by line** (to stdout, file, etc.).
+
+They’re super common in Unix-like systems (e.g., `grep`, `sort`, `uniq`) and Go makes it easy to implement them.
+
+---
+
+## 🔹 2. Why Line Filters in Go?
+
+* Go has strong support for **concurrent I/O** and **streaming text**.
+* Perfect for building small tools that process data efficiently.
+* Works well in **pipelines**: you can run your Go program and pipe input/output with other commands.
+
+---
+
+## 🔹 3. Building Blocks in Go
+
+To make a line filter in Go, we typically use:
+
+* **`os.Stdin`** → Read input from standard input (keyboard or piped data).
+* **`bufio.Scanner`** → Efficient line-by-line reading.
+* **`os.Stdout`** or `fmt.Println` → Write output.
+
+---
+
+## 🔹 4. Example: Uppercase Line Filter
+
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+func main() {
+	// Create a scanner to read from stdin
+	scanner := bufio.NewScanner(os.Stdin)
+
+	// Process line by line
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// Transform (make uppercase)
+		upperLine := strings.ToUpper(line)
+
+		// Write to stdout
+		fmt.Println(upperLine)
+	}
+
+	// Handle errors
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error reading input:", err)
+	}
+}
+```
+
+### ▶ Usage
+
+```bash
+echo "hello world" | go run main.go
+```
+
+Output:
+
+```
+HELLO WORLD
+```
+
+---
+
+## 🔹 5. Example: Filter Specific Lines (like `grep`)
+
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+)
+
+func main() {
+	scanner := bufio.NewScanner(os.Stdin)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		// Print only lines containing "go"
+		if strings.Contains(line, "go") {
+			fmt.Println(line)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+	}
+}
+```
+
+Usage:
+
+```bash
+cat file.txt | go run main.go
+```
+
+---
+
+## 🔹 6. Quirks / Best Practices
+
+* Always check `scanner.Err()` after looping.
+* `bufio.Scanner` has a **64 KB default buffer**. For very large lines, you may need `scanner.Buffer()` to increase it.
+* Use `os.Stdin` and `os.Stdout` to make the filter **composable in pipelines** (Unix philosophy).
+* Keep transformations **stateless per line** if possible → makes them faster and memory efficient.
+
+---
+
+✅ So in short:
+
+* A **line filter in Go** = read line → process line → output line.
+* Use `bufio.Scanner` + `os.Stdin` + `os.Stdout`.
+* They’re Go’s way of building Unix-style small programs.
+
+---
+
 
