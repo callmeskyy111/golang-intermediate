@@ -6128,10 +6128,6 @@ if err != nil {
 
 ---
 
-Let’s go step by step and understand **line filters in Go**.
-
----
-
 ## 🔹 1. What is a Line Filter?
 
 A **line filter** is a program that:
@@ -6264,5 +6260,215 @@ cat file.txt | go run main.go
 * They’re Go’s way of building Unix-style small programs.
 
 ---
+
+Perfect 👍 let’s dig into **file paths in Go** in detail.
+
+Go provides tools in its standard library (`path`, `path/filepath`, and `os`) for **working with file paths** across operating systems.
+
+---
+
+# 🔹 1. Paths in Go
+
+* A **path** is just a string representing the location of a file or directory.
+* Paths differ between OS:
+
+  * **Unix/Linux/macOS** → `/home/skyy/docs/file.txt`
+  * **Windows** → `C:\Users\Skyy\docs\file.txt`
+* Go’s `path/filepath` package automatically handles these OS differences.
+
+---
+
+# 🔹 2. Packages for Paths
+
+### ✅ `path` package
+
+* Works only with **forward-slash (`/`) separated paths**.
+* Mainly used for **URLs** and **virtual paths** (not actual filesystem paths).
+
+### ✅ `path/filepath` package
+
+* OS-aware → uses the correct separator (`/` or `\`).
+* Should be used for **filesystem paths**.
+
+---
+
+# 🔹 3. Common Functions in `path/filepath`
+
+### 🔸 `filepath.Join`
+
+Safely concatenates path parts using the correct separator.
+
+```go
+package main
+
+import (
+	"fmt"
+	"path/filepath"
+)
+
+func main() {
+	path := filepath.Join("home", "skyy", "docs", "file.txt")
+	fmt.Println("Path:", path)
+}
+```
+
+* Linux/macOS → `home/skyy/docs/file.txt`
+* Windows → `home\skyy\docs\file.txt`
+
+---
+
+### 🔸 `filepath.Dir` and `filepath.Base`
+
+```go
+p := "/home/skyy/docs/file.txt"
+
+fmt.Println(filepath.Dir(p))   // "/home/skyy/docs"
+fmt.Println(filepath.Base(p))  // "file.txt"
+```
+
+---
+
+### 🔸 `filepath.Ext`
+
+Get file extension.
+
+```go
+fmt.Println(filepath.Ext("report.pdf")) // ".pdf"
+```
+
+---
+
+### 🔸 `filepath.Abs`
+
+Get the absolute path (resolves relative paths).
+
+```go
+absPath, _ := filepath.Abs("file.txt")
+fmt.Println("Absolute Path:", absPath)
+```
+
+---
+
+### 🔸 `filepath.Clean`
+
+Cleans up redundant `.` or `..` or slashes.
+
+```go
+p := filepath.Clean("/home/skyy/../docs//file.txt")
+fmt.Println(p) // "/docs/file.txt"
+```
+
+---
+
+### 🔸 `filepath.Split`
+
+Splits directory + file.
+
+```go
+dir, file := filepath.Split("/home/skyy/docs/file.txt")
+fmt.Println("Dir:", dir)   // "/home/skyy/docs/"
+fmt.Println("File:", file) // "file.txt"
+```
+
+---
+
+### 🔸 `filepath.WalkDir` (Traverse Directory Tree)
+
+```go
+import (
+	"fmt"
+	"io/fs"
+	"path/filepath"
+)
+
+func main() {
+	root := "./"
+
+	filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		fmt.Println("Found:", path)
+		return nil
+	})
+}
+```
+
+This walks through every file and folder from the given root.
+
+---
+
+# 🔹 4. OS-Specific Path Handling
+
+### Path Separator
+
+```go
+fmt.Println("Separator:", string(filepath.Separator))
+// Linux/macOS → "/"
+// Windows → "\"
+```
+
+### List Split
+
+```go
+list := filepath.SplitList("/usr/bin:/bin:/usr/local/bin")
+fmt.Println(list) // ["/usr/bin", "/bin", "/usr/local/bin"]
+```
+
+---
+
+# 🔹 5. Checking Files/Directories with `os`
+
+Often we combine `os` with `filepath`.
+
+```go
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	info, err := os.Stat("file.txt")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println("Name:", info.Name())
+	fmt.Println("IsDir:", info.IsDir())
+}
+```
+
+---
+
+# 🔹 6. Real-World Example
+
+Suppose we want to **get all `.txt` files** in a directory:
+
+```go
+package main
+
+import (
+	"fmt"
+	"path/filepath"
+)
+
+func main() {
+	matches, _ := filepath.Glob("*.txt")
+	for _, file := range matches {
+		fmt.Println("Found file:", file)
+	}
+}
+```
+
+---
+
+✅ **Summary**:
+
+* Use **`path/filepath`** for filesystem paths (OS-aware).
+* Use **`path`** for slash-separated paths (URLs).
+* Functions like `Join`, `Dir`, `Base`, `Ext`, `Abs`, `Clean`, `Split`, `WalkDir`, and `Glob` are key tools.
+
+---
+
 
 
