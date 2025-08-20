@@ -6939,8 +6939,220 @@ File content: Temporary content here
 
 ---
 
+The **`//go:embed` directive** in Go is one of the coolest features introduced in **Go 1.16**, making it possible to include static files **directly inside Go binaries** without shipping separate assets. Let’s break it down thoroughly. 🚀
 
+---
 
+# 📦 The `embed` Package in Go
 
+## 🔹 What is `//go:embed`?
 
+* `//go:embed` is a **compiler directive**.
+* It allows us to embed **files or folders** into the compiled Go program.
+* Managed via the **`embed` standard package**.
+* Very useful for embedding **config files, templates, static assets, migrations, etc.**
+
+---
+
+## 🔹 1. Importing the Package
+
+```go
+import _ "embed"
+```
+
+⚠️ Notice the underscore `_`.
+We don’t use functions from the package directly, but it enables the `//go:embed` directive.
+
+---
+
+## 🔹 2. Embedding a Single File
+
+```go
+package main
+
+import (
+	_ "embed"
+	"fmt"
+)
+
+//go:embed hello.txt
+var message string
+
+func main() {
+	fmt.Println(message)
+}
+```
+
+### Explanation:
+
+* `hello.txt` content will be **compiled into the binary**.
+* Variable type can be:
+
+  * `string` → file content as text
+  * `[]byte` → raw binary data
+* Here, if `hello.txt` contains `Hello, Go!`, running program prints:
+
+  ```
+  Hello, Go!
+  ```
+
+---
+
+## 🔹 3. Embedding Binary Data
+
+```go
+//go:embed image.png
+var imageBytes []byte
+
+func main() {
+	fmt.Println("Image size:", len(imageBytes))
+}
+```
+
+✅ Useful for embedding logos, PDFs, images, etc.
+
+---
+
+## 🔹 4. Embedding Multiple Files
+
+```go
+//go:embed config.json schema.sql notes.txt
+var files embed.FS
+```
+
+* `embed.FS` represents a **virtual filesystem** of embedded files.
+* We can use `ReadFile`:
+
+```go
+data, _ := files.ReadFile("config.json")
+fmt.Println(string(data))
+```
+
+---
+
+## 🔹 5. Embedding Entire Directories
+
+```go
+//go:embed static/*
+var staticFiles embed.FS
+```
+
+* Embeds all files inside `static/` directory.
+* Access:
+
+```go
+data, _ := staticFiles.ReadFile("static/index.html")
+fmt.Println(string(data))
+```
+
+---
+
+## 🔹 6. Using `embed.FS` like `io/fs`
+
+* `embed.FS` implements the `fs.FS` interface from `io/fs`.
+* Which means:
+
+  * Can be used with functions like `fs.ReadDir`, `fs.Glob`, etc.
+  * Works with `http.FileServer` for serving static sites.
+
+Example (serve website with embedded HTML/JS/CSS):
+
+```go
+package main
+
+import (
+	"embed"
+	"io/fs"
+	"net/http"
+)
+
+//go:embed static/*
+var content embed.FS
+
+func main() {
+	subFS, _ := fs.Sub(content, "static")
+	http.Handle("/", http.FileServer(http.FS(subFS)))
+	http.ListenAndServe(":8080", nil)
+}
+```
+
+✅ This serves files from `static/` as a web server without shipping extra files.
+
+---
+
+## 🔹 7. Rules & Limitations
+
+1. **Directive position**:
+
+   * Must appear **immediately before** the variable declaration.
+2. **Variable types allowed**:
+
+   * `string`
+   * `[]byte`
+   * `embed.FS`
+3. **Build-time resolution**:
+
+   * Files must exist at **build time**.
+   * If not, build fails.
+4. **File names are relative** to the source file containing the directive.
+5. **Globs allowed**:
+
+   * `*` (matches files in directory, not subdirectories).
+   * `static/*` works.
+   * `static/**` (recursive glob) ❌ not supported.
+
+---
+
+## 🔹 8. Practical Use Cases
+
+* 📜 **Configuration files**: ship default configs in binary.
+* 🎨 **Templates**: embed HTML templates for web servers.
+* 🌍 **Static websites**: serve JS/CSS/HTML from Go binary.
+* 🗄️ **Database migrations**: embed `.sql` migration files.
+* 📦 **Single-binary apps**: no external dependencies required.
+
+---
+
+## 🔹 9. Example: Templates with Embed
+
+```go
+package main
+
+import (
+	"embed"
+	"html/template"
+	"net/http"
+)
+
+//go:embed templates/*
+var tmplFS embed.FS
+
+func main() {
+	tmpl := template.Must(template.ParseFS(tmplFS, "templates/*.html"))
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		tmpl.ExecuteTemplate(w, "index.html", map[string]string{"Name": "Skyy"})
+	})
+
+	http.ListenAndServe(":8080", nil)
+}
+```
+
+✅ The `templates/` directory is embedded into the binary.
+
+---
+
+# 📝 Summary (Cheat Sheet)
+
+| Directive                | Type Allowed | Purpose                      |
+| ------------------------ | ------------ | ---------------------------- |
+| `//go:embed file.txt`    | `string`     | Embed text file content      |
+| `//go:embed file.bin`    | `[]byte`     | Embed binary file content    |
+| `//go:embed file1 file2` | `embed.FS`   | Embed multiple files         |
+| `//go:embed dir/*`       | `embed.FS`   | Embed all files in directory |
+
+* Use `embed.FS.ReadFile("path")` to read embedded files.
+* Clean solution for bundling assets directly inside Go binary.
+
+---
 
