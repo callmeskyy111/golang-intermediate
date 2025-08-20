@@ -6710,5 +6710,237 @@ This copies all files from `parent` to `backup`.
 
 ---
 
+Let’s build a **Directory Handling Cheat Sheet in Go**.
+This will be a **quick reference table** for everything we covered — creation, navigation, deletion, listing, walking, etc.
+
+---
+
+# 📂 Golang Directory Handling Cheat Sheet
+
+| **Action**                | **Function / Code**                                                                   | **Notes**                                             |
+| ------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **Create a directory**    | `os.Mkdir("mydir", 0755)`                                                             | Creates a single directory (fails if parent missing). |
+| **Create nested dirs**    | `os.MkdirAll("a/b/c", 0755)`                                                          | Like `mkdir -p`. Creates parents automatically.       |
+| **Remove empty dir**      | `os.Remove("mydir")`                                                                  | Works only if directory is empty.                     |
+| **Remove dir + contents** | `os.RemoveAll("mydir")`                                                               | Recursive delete (⚠ dangerous).                       |
+| **Change current dir**    | `os.Chdir("mydir")`                                                                   | Sets working dir of the program.                      |
+| **Get current dir**       | `cwd, _ := os.Getwd()`                                                                | Returns absolute working dir.                         |
+| **Check if path is dir**  | `info, _ := os.Stat("path"); info.IsDir()`                                            | Returns `true` if path is directory.                  |
+| **List files in dir**     | `entries, _ := os.ReadDir("path")`                                                    | Returns slice of `DirEntry`.                          |
+| **List (old way)**        | `f, _ := os.Open("path"); f.Readdir(-1)`                                              | Legacy, returns `FileInfo`.                           |
+| **Read dir entry names**  | `for _, e := range entries { fmt.Println(e.Name()) }`                                 | Works with `os.ReadDir`.                              |
+| **Walk directory tree**   | `filepath.WalkDir("root", func(path string, d fs.DirEntry, err error) error { ... })` | Recursively visits all dirs/files.                    |
+| **Get absolute path**     | `abs, _ := filepath.Abs("mydir")`                                                     | Converts relative → absolute path.                    |
+| **Join paths**            | `filepath.Join("a","b","c")`                                                          | Cross-platform safe path joining.                     |
+| **Split path**            | `dir, file := filepath.Split("/a/b/c.txt")`                                           | Splits dir and filename.                              |
+| **Get parent dir**        | `filepath.Dir("/a/b/c.txt")`                                                          | Returns `/a/b`.                                       |
+| **Get base (last elem)**  | `filepath.Base("/a/b/c.txt")`                                                         | Returns `c.txt`.                                      |
+| **Get extension**         | `filepath.Ext("file.txt")`                                                            | Returns `.txt`.                                       |
+
+---
+
+# 🔹 Example: Quick Directory Utility
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
+
+func main() {
+	// Create
+	os.MkdirAll("parent/child", 0755)
+
+	// Current working dir
+	cwd, _ := os.Getwd()
+	fmt.Println("CWD:", cwd)
+
+	// List directory
+	entries, _ := os.ReadDir(".")
+	for _, e := range entries {
+		if e.IsDir() {
+			fmt.Println("Dir:", e.Name())
+		} else {
+			fmt.Println("File:", e.Name())
+		}
+	}
+
+	// Walk tree
+	filepath.WalkDir(".", func(path string, d os.DirEntry, err error) error {
+		if d.IsDir() {
+			fmt.Println("[DIR]", path)
+		} else {
+			fmt.Println("[FILE]", path)
+		}
+		return nil
+	})
+}
+```
+
+---
+
+Let’s dive into **Temporary Files & Directories in Go**.
+These are very useful when we need scratch space for intermediate data, caching, or testing.
+
+---
+
+# 📂 Temporary Files and Directories in Go
+
+Go provides support for **temporary files and dirs** via the `os` and `io/ioutil` (deprecated, use `os` or `os.CreateTemp`) packages.
+
+---
+
+## 🔹 1. Creating a Temporary File
+
+We use `os.CreateTemp`:
+
+```go
+file, err := os.CreateTemp("", "example-*.txt")
+if err != nil {
+    panic(err)
+}
+defer os.Remove(file.Name()) // cleanup
+defer file.Close()
+
+fmt.Println("Temp file created:", file.Name())
+
+file.WriteString("Hello, temp file!")
+```
+
+### Explanation:
+
+* **`os.CreateTemp(dir, pattern)`**
+
+  * `dir`: Directory to create file in. If `""`, defaults to system temp dir (`os.TempDir()`).
+  * `pattern`: Name pattern. `*` is replaced with random string (ensures uniqueness).
+* Returns a `*os.File`.
+* File is created **opened for writing**.
+* We should `defer file.Close()` after use.
+* Usually also `defer os.Remove(file.Name())` for cleanup.
+
+👉 Example result:
+`/tmp/example-12345.txt` (Linux/Mac) or `%TEMP%\example-12345.txt` (Windows).
+
+---
+
+## 🔹 2. Creating a Temporary Directory
+
+We use `os.MkdirTemp`:
+
+```go
+dir, err := os.MkdirTemp("", "mytempdir-*")
+if err != nil {
+    panic(err)
+}
+defer os.RemoveAll(dir) // cleanup entire dir
+
+fmt.Println("Temp dir created:", dir)
+
+// Create file inside temp dir
+fpath := filepath.Join(dir, "file.txt")
+os.WriteFile(fpath, []byte("data inside temp dir"), 0644)
+```
+
+### Explanation:
+
+* **`os.MkdirTemp(dir, pattern)`**
+
+  * `dir`: Parent dir for new temp dir. `""` = system temp.
+  * `pattern`: Prefix + random suffix.
+* Returns **absolute path** of new dir.
+* We usually clean with `os.RemoveAll(dir)`.
+
+---
+
+## 🔹 3. Get System Temp Directory
+
+```go
+fmt.Println("System temp directory:", os.TempDir())
+```
+
+* Returns system-defined temp location:
+
+  * Linux/Mac → `/tmp`
+  * Windows → `%TEMP%`
+
+---
+
+## 🔹 4. Cleaning Up
+
+* Always cleanup temp files/dirs after use.
+* Use:
+
+  * `os.Remove(file.Name())` → remove file
+  * `os.RemoveAll(dir)` → remove dir recursively
+
+⚠️ Best practice: Always `defer` cleanup immediately after creation.
+
+---
+
+## 🔹 5. Practical Example: Temp File + Dir Workflow
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+)
+
+func main() {
+	// 1. Create temp dir
+	dir, _ := os.MkdirTemp("", "session-*")
+	defer os.RemoveAll(dir)
+	fmt.Println("Temp dir:", dir)
+
+	// 2. Create temp file inside dir
+	file, _ := os.CreateTemp(dir, "data-*.txt")
+	defer file.Close()
+	fmt.Println("Temp file:", file.Name())
+
+	// 3. Write into temp file
+	file.WriteString("Temporary content here")
+
+	// 4. Read back
+	content, _ := os.ReadFile(file.Name())
+	fmt.Println("File content:", string(content))
+}
+```
+
+✅ Output:
+
+```
+Temp dir: /tmp/session-45672
+Temp file: /tmp/session-45672/data-8374.txt
+File content: Temporary content here
+```
+
+---
+
+## 🔹 6. Common Use Cases
+
+* **Testing**: Create isolated scratch files/directories.
+* **Caching**: Store temporary downloads, processing data.
+* **Intermediate results**: During file conversions, compression, etc.
+* **Cross-platform safety**: `os.TempDir()` handles platform-specific paths.
+
+---
+
+# 📝 Summary
+
+* `os.CreateTemp("", "prefix-*")` → Temp file.
+* `os.MkdirTemp("", "prefix-*")` → Temp dir.
+* `os.TempDir()` → Default system temp location.
+* Always cleanup: `os.Remove()` or `os.RemoveAll()`.
+
+---
+
+
+
+
 
 
