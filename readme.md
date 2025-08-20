@@ -6470,5 +6470,245 @@ func main() {
 
 ---
 
+Let’s go **step by step** into **directories in Go (Golang)**.
+Working with directories is very common in real-world apps — reading, creating, navigating, walking, deleting, etc. Go’s standard library (`os`, `io/ioutil` \[deprecated], `path/filepath`) gives us all the tools.
+
+---
+
+# 🔹 1. What is a Directory in Go?
+
+* A **directory** is a container for files and subdirectories.
+* Directories can be:
+
+  * **Absolute path**: `/home/skyy/projects`
+  * **Relative path**: `./projects` (relative to where the program runs).
+* Go treats directories as **first-class filesystem objects** (like files).
+
+---
+
+# 🔹 2. Creating Directories
+
+We use **`os.Mkdir`** and **`os.MkdirAll`**.
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	// Create single directory
+	err := os.Mkdir("mydir", 0755) // rwxr-xr-x
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	// Create nested directories
+	err = os.MkdirAll("parent/child/grandchild", 0755)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	fmt.Println("Directories created ✅")
+}
+```
+
+* **`Mkdir`** → creates a single directory. Fails if parent doesn’t exist.
+* **`MkdirAll`** → creates nested directories, like `mkdir -p` in Linux.
+* **Permissions**: `0755` = `rwxr-xr-x`.
+
+---
+
+# 🔹 3. Removing Directories
+
+```go
+// Remove empty dir
+err := os.Remove("mydir")
+
+// Remove dir with contents (recursive delete)
+err := os.RemoveAll("parent")
+```
+
+* `Remove` → works only if directory is empty.
+* `RemoveAll` → deletes everything inside (use carefully ⚠️).
+
+---
+
+# 🔹 4. Changing Directory
+
+```go
+err := os.Chdir("parent")
+if err != nil {
+	fmt.Println("Error changing dir:", err)
+}
+```
+
+* Changes the **current working directory** of the running program.
+* Useful if we want to work relative to another path.
+
+---
+
+# 🔹 5. Getting Current Directory
+
+```go
+cwd, _ := os.Getwd()
+fmt.Println("Current working dir:", cwd)
+```
+
+---
+
+# 🔹 6. Reading Directory Contents
+
+We can **list files** inside a directory.
+
+### Method 1: `os.ReadDir` (Go 1.16+ preferred)
+
+```go
+entries, _ := os.ReadDir(".")
+for _, e := range entries {
+	if e.IsDir() {
+		fmt.Println("Dir:", e.Name())
+	} else {
+		fmt.Println("File:", e.Name())
+	}
+}
+```
+
+### Method 2: `os.Open` + `Readdir`
+
+```go
+f, _ := os.Open(".")
+defer f.Close()
+
+files, _ := f.Readdir(-1) // -1 → all entries
+for _, file := range files {
+	fmt.Println(file.Name(), file.IsDir())
+}
+```
+
+---
+
+# 🔹 7. Traversing Directories (Recursive Walk)
+
+### `filepath.WalkDir`
+
+```go
+import (
+	"fmt"
+	"io/fs"
+	"path/filepath"
+)
+
+func main() {
+	root := "./"
+
+	filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			fmt.Println("Directory:", path)
+		} else {
+			fmt.Println("File:", path)
+		}
+		return nil
+	})
+}
+```
+
+* Walks **all files and subdirectories** starting from `root`.
+* We can filter by extension, size, etc.
+
+---
+
+# 🔹 8. Checking if Path is Directory
+
+```go
+info, err := os.Stat("parent")
+if err != nil {
+	fmt.Println("Error:", err)
+	return
+}
+
+if info.IsDir() {
+	fmt.Println("It's a directory ✅")
+} else {
+	fmt.Println("It's a file 📄")
+}
+```
+
+---
+
+# 🔹 9. Directory Permissions
+
+* Directories in Go follow Unix permissions:
+
+  * **Read (r)** → list files inside.
+  * **Write (w)** → create/remove files inside.
+  * **Execute (x)** → enter the directory.
+* Example: `0755` → `rwxr-xr-x`.
+
+---
+
+# 🔹 10. Example: Copying All Files from One Directory to Another
+
+```go
+package main
+
+import (
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+)
+
+func main() {
+	src := "parent"
+	dst := "backup"
+
+	os.MkdirAll(dst, 0755)
+
+	filepath.WalkDir(src, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			// open source file
+			in, _ := os.Open(path)
+			defer in.Close()
+
+			// create destination file
+			outPath := filepath.Join(dst, filepath.Base(path))
+			out, _ := os.Create(outPath)
+			defer out.Close()
+
+			io.Copy(out, in)
+			fmt.Println("Copied:", path, "→", outPath)
+		}
+		return nil
+	})
+}
+```
+
+This copies all files from `parent` to `backup`.
+
+---
+
+# 🔹 11. Summary
+
+✅ **Creating** → `os.Mkdir`, `os.MkdirAll`
+✅ **Removing** → `os.Remove`, `os.RemoveAll`
+✅ **Navigating** → `os.Chdir`, `os.Getwd`
+✅ **Listing** → `os.ReadDir`, `os.Open` + `Readdir`
+✅ **Walking** → `filepath.WalkDir` (recursive)
+✅ **Checking** → `os.Stat().IsDir()`
+✅ **Permissions** → Unix style (`0755`, `0777`, etc.)
+
+---
+
 
 
