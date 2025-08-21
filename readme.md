@@ -7156,3 +7156,318 @@ func main() {
 
 ---
 
+**Command-Line Arguments and Flags in Go**. 🏳️
+This is an essential part of building **CLI tools, utilities, and configurable apps**.
+
+---
+
+# 🖥 Command Line Arguments & Flags in Go
+
+Go gives us **two levels** of handling command-line input:
+
+1. **Arguments (`os.Args`)** → raw input as a slice of strings.
+2. **Flags (`flag` package)** → structured parsing with types, defaults, and help text.
+
+---
+
+## 🔹 1. Command-Line Arguments with `os.Args`
+
+### Example
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	// os.Args gives us all arguments as []string
+	args := os.Args
+	fmt.Println("All arguments:", args)
+
+	if len(args) > 1 {
+		fmt.Println("First argument:", args[1])
+	} else {
+		fmt.Println("No arguments provided")
+	}
+}
+```
+
+### Run:
+
+```bash
+go run main.go hello world
+```
+
+### Output:
+
+```
+All arguments: [./main hello world]
+First argument: hello
+```
+
+🔹 Notes:
+
+* `os.Args[0]` is always the program name (path).
+* Arguments start from index 1.
+
+⚠️ Problem: All arguments are **strings**, no automatic type conversion, no help messages. That’s where **`flag` package** comes in.
+
+---
+
+## 🔹 2. Command-Line Flags with `flag` Package
+
+The `flag` package is the standard way to define **options with names, default values, types, and help text**.
+
+---
+
+### Example: Basic Flags
+
+```go
+package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+func main() {
+	// define flags
+	name := flag.String("name", "Guest", "Your name")
+	age := flag.Int("age", 18, "Your age")
+	isMember := flag.Bool("member", false, "Are you a member?")
+
+	// parse flags
+	flag.Parse()
+
+	// use values
+	fmt.Println("Name:", *name)
+	fmt.Println("Age:", *age)
+	fmt.Println("Is Member:", *isMember)
+}
+```
+
+### Run:
+
+```bash
+go run main.go -name=Skyy -age=29 -member=true
+```
+
+### Output:
+
+```
+Name: Skyy
+Age: 29
+Is Member: true
+```
+
+🔹 Notes:
+
+* `flag.String` returns a **pointer**, so we dereference with `*name`.
+* Defaults: if we don’t pass `-name`, it uses `"Guest"`.
+* `flag.Parse()` is **required** before using the flags.
+
+---
+
+## 🔹 3. Positional Arguments + Flags
+
+Anything **after flags** is stored in `flag.Args()`.
+
+```go
+package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+func main() {
+	mode := flag.String("mode", "dev", "Mode of operation")
+	flag.Parse()
+
+	fmt.Println("Mode:", *mode)
+	fmt.Println("Remaining args:", flag.Args())
+}
+```
+
+### Run:
+
+```bash
+go run main.go -mode=prod file1.txt file2.txt
+```
+
+### Output:
+
+```
+Mode: prod
+Remaining args: [file1.txt file2.txt]
+```
+
+✅ Useful for commands like:
+
+```
+mytool -mode=prod input.txt output.txt
+```
+
+---
+
+## 🔹 4. Custom Flag Types
+
+We can define our own flag type by implementing `flag.Value`.
+
+### Example: Duration
+
+```go
+package main
+
+import (
+	"flag"
+	"fmt"
+	"time"
+)
+
+type durationFlag struct {
+	val time.Duration
+}
+
+func (d *durationFlag) String() string {
+	return d.val.String()
+}
+
+func (d *durationFlag) Set(s string) error {
+	v, err := time.ParseDuration(s)
+	if err != nil {
+		return err
+	}
+	d.val = v
+	return nil
+}
+
+func main() {
+	var d durationFlag
+	flag.Var(&d, "timeout", "Timeout duration (e.g. 5s, 2m)")
+
+	flag.Parse()
+	fmt.Println("Timeout:", d.val)
+}
+```
+
+### Run:
+
+```bash
+go run main.go -timeout=10s
+```
+
+### Output:
+
+```
+Timeout: 10s
+```
+
+---
+
+## 🔹 5. Help & Usage
+
+By default, `flag` auto-generates help text.
+
+```go
+package main
+
+import (
+	"flag"
+)
+
+func main() {
+	name := flag.String("name", "Guest", "Your name")
+	flag.Parse()
+}
+```
+
+Run:
+
+```bash
+go run main.go -h
+```
+
+Output:
+
+```
+Usage of main:
+  -name string
+        Your name (default "Guest")
+```
+
+✅ `flag.Usage` can be overridden to customize help messages.
+
+---
+
+## 🔹 6. Advanced: Subcommands (Like `git commit`, `git push`)
+
+For complex CLIs, we can simulate subcommands:
+
+```go
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+)
+
+func main() {
+	addCmd := flag.NewFlagSet("add", flag.ExitOnError)
+	removeCmd := flag.NewFlagSet("remove", flag.ExitOnError)
+
+	addName := addCmd.String("name", "", "Name to add")
+	removeID := removeCmd.Int("id", 0, "ID to remove")
+
+	if len(os.Args) < 2 {
+		fmt.Println("expected 'add' or 'remove'")
+		os.Exit(1)
+	}
+
+	switch os.Args[1] {
+	case "add":
+		addCmd.Parse(os.Args[2:])
+		fmt.Println("Adding:", *addName)
+	case "remove":
+		removeCmd.Parse(os.Args[2:])
+		fmt.Println("Removing ID:", *removeID)
+	default:
+		fmt.Println("Unknown command")
+	}
+}
+```
+
+Run:
+
+```bash
+go run main.go add -name=Skyy
+go run main.go remove -id=42
+```
+
+---
+
+# 📝 Summary (Cheat Sheet)
+
+| Method              | Use Case                                            |
+| ------------------- | --------------------------------------------------- |
+| `os.Args`           | Raw arguments (simple cases, positional arguments). |
+| `flag.String` etc   | Typed flags (string, int, bool, etc.).              |
+| `flag.Parse()`      | Must be called before reading flag values.          |
+| `flag.Args()`       | Extra positional args after flags.                  |
+| `flag.Usage`        | Custom help messages.                               |
+| `flag.NewFlagSet`   | Subcommands (e.g. `git commit`).                    |
+| Custom `flag.Value` | Support custom flag types (e.g. time.Duration).     |
+
+---
+
+👉 So in short:
+
+* Use **`os.Args`** when we just need raw strings.
+* Use **`flag` package** for real CLI tools (typed, defaults, help).
+* For very advanced CLIs (like Docker, Git), we’d move to frameworks like **Cobra** or **urfave/cli**.
+
+---
