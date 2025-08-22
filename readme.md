@@ -7471,3 +7471,211 @@ go run main.go remove -id=42
 * For very advanced CLIs (like Docker, Git), we’d move to frameworks like **Cobra** or **urfave/cli**.
 
 ---
+
+Let’s go step by step and deeply explain **command-line subcommands in Go**.
+
+---
+
+## 1. 📌 What are Subcommands?
+
+* **Commands**: Arguments we pass when running a program.
+* **Subcommands**: Think of them as *mini-programs* or *modes* inside the main program.
+  Each subcommand usually has its **own set of flags and behavior**.
+
+👉 Example from Git:
+
+```sh
+git commit -m "message"
+git push origin main
+git status
+```
+
+* `commit`, `push`, `status` → **subcommands** of `git`.
+
+So in Go, we can build CLIs that behave the same way.
+
+---
+
+## 2. 📌 Subcommands in Go using `flag` package
+
+Go’s standard library (`flag`) does not directly support subcommands,
+but we can simulate them by creating **separate `FlagSet`s**.
+
+### Example: Simple Subcommands
+
+```go
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+)
+
+func main() {
+	// Define subcommands as FlagSets
+	addCmd := flag.NewFlagSet("add", flag.ExitOnError)
+	subCmd := flag.NewFlagSet("sub", flag.ExitOnError)
+
+	// Define flags for "add"
+	addX := addCmd.Int("x", 0, "first number")
+	addY := addCmd.Int("y", 0, "second number")
+
+	// Define flags for "sub"
+	subX := subCmd.Int("x", 0, "first number")
+	subY := subCmd.Int("y", 0, "second number")
+
+	if len(os.Args) < 2 {
+		fmt.Println("expected 'add' or 'sub' subcommand")
+		os.Exit(1)
+	}
+
+	// Switch based on subcommand
+	switch os.Args[1] {
+	case "add":
+		addCmd.Parse(os.Args[2:])
+		fmt.Println("Result:", *addX+*addY)
+	case "sub":
+		subCmd.Parse(os.Args[2:])
+		fmt.Println("Result:", *subX-*subY)
+	default:
+		fmt.Println("expected 'add' or 'sub' subcommand")
+		os.Exit(1)
+	}
+}
+```
+
+### Run it:
+
+```sh
+go run main.go add -x 5 -y 3
+# Output: Result: 8
+
+go run main.go sub -x 10 -y 4
+# Output: Result: 6
+```
+
+🔑 Key ideas:
+
+* `flag.NewFlagSet` lets us define flags **specific** to a subcommand.
+* We manually check `os.Args[1]` to see which subcommand the user typed.
+
+---
+
+## 3. 📌 Real-World Example: A CLI with multiple tools
+
+```go
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+)
+
+func main() {
+	// greet subcommand
+	greetCmd := flag.NewFlagSet("greet", flag.ExitOnError)
+	name := greetCmd.String("name", "World", "Who to greet")
+
+	// math subcommand
+	mathCmd := flag.NewFlagSet("math", flag.ExitOnError)
+	num1 := mathCmd.Int("a", 0, "First number")
+	num2 := mathCmd.Int("b", 0, "Second number")
+
+	if len(os.Args) < 2 {
+		fmt.Println("expected 'greet' or 'math'")
+		os.Exit(1)
+	}
+
+	switch os.Args[1] {
+	case "greet":
+		greetCmd.Parse(os.Args[2:])
+		fmt.Printf("Hello, %s!\n", *name)
+	case "math":
+		mathCmd.Parse(os.Args[2:])
+		fmt.Printf("%d + %d = %d\n", *num1, *num2, *num1+*num2)
+	default:
+		fmt.Println("expected 'greet' or 'math'")
+		os.Exit(1)
+	}
+}
+```
+
+### Run:
+
+```sh
+go run main.go greet -name Skyy
+# Output: Hello, Skyy!
+
+go run main.go math -a 7 -b 5
+# Output: 7 + 5 = 12
+```
+
+---
+
+## 4. 📌 Limitations of `flag` for subcommands
+
+* Manual parsing of `os.Args` is required.
+* No built-in help menus for subcommands.
+* Gets messy with many subcommands.
+
+---
+
+## 5. 📌 Using Third-Party CLI Libraries
+
+For complex CLIs, Go developers usually use **Cobra** or **urfave/cli**.
+
+### Cobra (used in `kubectl`, `git-lfs`, etc.)
+
+* Auto-generates help menus.
+* Easier subcommand hierarchy.
+* Widely used for production-grade CLIs.
+
+Example with Cobra:
+
+```sh
+go get -u github.com/spf13/cobra@latest
+```
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/spf13/cobra"
+)
+
+func main() {
+	var rootCmd = &cobra.Command{Use: "app"}
+
+	var greetCmd = &cobra.Command{
+		Use:   "greet",
+		Short: "Greets the user",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Hello from Cobra!")
+		},
+	}
+
+	rootCmd.AddCommand(greetCmd)
+	rootCmd.Execute()
+}
+```
+
+Run:
+
+```sh
+go run main.go greet
+# Output: Hello from Cobra!
+```
+
+---
+
+## 6. 📌 Summary
+
+* **Subcommands** = mini-programs inside a CLI tool.
+* With standard lib → use `flag.NewFlagSet` + manual parsing.
+* For advanced apps → use **Cobra** or **urfave/cli**.
+* Subcommands let us build CLIs like `git`, `docker`, `kubectl`.
+
+---
