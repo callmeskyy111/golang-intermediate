@@ -1,0 +1,20 @@
+🐞 DEBUG: 2025/08/23 19:31:48 logging.go:36: This is a DEBUG message in another file ✔️
+📃 INFO: 2025/08/23 19:31:48 logging.go:39: This is an INFO message in another file ✔️
+⚠️ WARN: 2025/08/23 19:31:48 logging.go:42: This is a WARNING message in another file ✔️
+🔴 ERROR: 2025/08/23 19:31:48 logging.go:45: This is an ERROR message in another file ✔️
+🐞 DEBUG: 2025/08/23 19:32:11 logging.go:36: This is a DEBUG message in another file ✔️
+📃 INFO: 2025/08/23 19:32:11 logging.go:39: This is an INFO message in another file ✔️
+⚠️ WARN: 2025/08/23 19:32:11 logging.go:42: This is a WARNING message in another file ✔️
+🔴 ERROR: 2025/08/23 19:32:11 logging.go:45: This is an ERROR message in another file ✔️
+🐞 DEBUG: 2025/08/23 19:33:21 logging.go:36: This is a DEBUG message in another file ✔️
+📃 INFO: 2025/08/23 19:33:21 logging.go:39: This is an INFO message in another file ✔️
+⚠️ WARN: 2025/08/23 19:33:21 logging.go:42: This is a WARNING message in another file ✔️
+🔴 ERROR: 2025/08/23 19:33:21 logging.go:45: This is an ERROR message in another file ✔️
+🐞 DEBUG: 2025/08/23 19:33:45 logging.go:36: This is a DEBUG message in another file ✔️
+📃 INFO: 2025/08/23 19:33:45 logging.go:39: This is an INFO message in another file ✔️
+⚠️ WARN: 2025/08/23 19:33:45 logging.go:42: This is a WARNING message in another file ✔️
+🔴 ERROR: 2025/08/23 19:33:45 logging.go:45: This is an ERROR message in another file ✔️
+🐞 DEBUG: 2025/08/23 19:33:50 logging.go:36: This is a DEBUG message in another file ✔️
+📃 INFO: 2025/08/23 19:33:50 logging.go:39: This is an INFO message in another file ✔️
+⚠️ WARN: 2025/08/23 19:33:50 logging.go:42: This is a WARNING message in another file ✔️
+🔴 ERROR: 2025/08/23 19:33:50 logging.go:45: This is an ERROR message in another file ✔️

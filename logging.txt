@@ -1,0 +1,54 @@
+package intermediategolang
+
+import (
+	"log"
+	"os"
+)
+
+func main() {
+	log.Println("This is a log message")
+	log.SetPrefix("INFO:")
+	log.Println("This is a log message with a prefix")
+
+	// log flags
+	log.SetFlags(log.Ldate)
+	log.Println("This is a log message with only date info.")
+
+	// chain multiple flags
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	log.Println("This is a message with chained date, time.")
+
+	infoLogger.Println("This is an info message")
+	warnLogger.Println("This is a WARNING message")
+	errorLogger.Println("This is an ERROR message")
+
+	// write logs in another file
+	file,err:=os.OpenFile("app.log",os.O_CREATE | os.O_WRONLY | os.O_APPEND , 0666)
+	if err!=nil{
+		log.Fatalf("Failed to open logFile: %v",err)
+	}
+
+	defer file.Close() // Always close an opened file 🔴
+
+	// logginf to another file (app.log)
+	// instead of os.Stdout, it needs a writer(io.writer, aka file here)
+	debugLogger := log.New(file, "🐞 DEBUG: ",log.Ldate | log.Ltime | log.Lshortfile)
+	debugLogger.Println("This is a DEBUG message in another file ✔️")
+
+	infoLoggerFile := log.New(file, "📃 INFO: ",log.Ldate | log.Ltime | log.Lshortfile)
+	infoLoggerFile.Println("This is an INFO message in another file ✔️")
+
+	warnLoggerFile := log.New(file, "⚠️ WARN: ",log.Ldate | log.Ltime | log.Lshortfile)
+	warnLoggerFile.Println("This is a WARNING message in another file ✔️")
+
+	errorLoggerFile := log.New(file, "🔴 ERROR: ",log.Ldate | log.Ltime | log.Lshortfile)
+	errorLoggerFile.Println("This is an ERROR message in another file ✔️")
+}
+
+// custom logging/flagging to the terminal/console
+
+var (
+	infoLogger = log.New(os.Stdout, "✅ INFO: ",log.Ldate | log.Ltime | log.Lshortfile)
+	warnLogger = log.New(os.Stdout, "⚠️ WARN:",log.Ldate | log.Ltime | log.Lshortfile)
+	errorLogger = log.New(os.Stdout, "🔴 ERROR:",log.Ldate | log.Ltime | log.Lshortfile)
+)
