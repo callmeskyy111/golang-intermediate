@@ -7679,3 +7679,437 @@ go run main.go greet
 * Subcommands let us build CLIs like `git`, `docker`, `kubectl`.
 
 ---
+
+**Environment Variables in Go (Golang)** in detail.
+
+---
+
+# 🌍 1. What are Environment Variables?
+
+* Environment variables are **key-value pairs** stored outside the program.
+* They provide configuration (like database URL, API keys, ports) without hardcoding values in code.
+* This makes apps more **flexible, secure, and portable**.
+
+👉 Example in Linux/macOS:
+
+```sh
+export DB_USER=root
+export DB_PASS=secret
+```
+
+👉 Example in Windows (PowerShell):
+
+```ps
+$env:DB_USER="root"
+$env:DB_PASS="secret"
+```
+
+---
+
+# 🛠 2. Working with Environment Variables in Go
+
+Go provides the **`os` package** for handling env vars.
+
+---
+
+## 📌 (a) Reading Environment Variables
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	dbUser := os.Getenv("DB_USER")
+	dbPass := os.Getenv("DB_PASS")
+
+	if dbUser == "" || dbPass == "" {
+		fmt.Println("Environment variables not set!")
+	} else {
+		fmt.Println("DB_USER:", dbUser)
+		fmt.Println("DB_PASS:", dbPass)
+	}
+}
+```
+
+Run:
+
+```sh
+export DB_USER=root
+export DB_PASS=secret
+go run main.go
+```
+
+Output:
+
+```
+DB_USER: root
+DB_PASS: secret
+```
+
+👉 `os.Getenv("KEY")` returns:
+
+* The value if the variable exists.
+* An **empty string** if it does not exist.
+
+---
+
+## 📌 (b) MustGetEnv (Fail if Missing)
+
+Sometimes we want to **fail fast** if a required variable is missing.
+
+```go
+func mustGetEnv(key string) string {
+	val := os.Getenv(key)
+	if val == "" {
+		panic(fmt.Sprintf("Missing required env var: %s", key))
+	}
+	return val
+}
+```
+
+---
+
+## 📌 (c) Setting Environment Variables (inside Go)
+
+```go
+os.Setenv("PORT", "8080")
+port := os.Getenv("PORT")
+fmt.Println("Server running on port:", port)
+```
+
+👉 Note: `os.Setenv` only changes env vars for the **current process**, not globally.
+
+---
+
+## 📌 (d) Listing All Environment Variables
+
+```go
+for _, e := range os.Environ() {
+	fmt.Println(e)
+}
+```
+
+This prints values like:
+
+```
+PATH=/usr/local/bin:/usr/bin
+HOME=/home/skyy
+SHELL=/bin/bash
+```
+
+---
+
+## 📌 (e) Unsetting Environment Variables
+
+```go
+os.Unsetenv("DB_PASS")
+```
+
+---
+
+# 🧑‍💻 3. Loading Environment Variables from `.env` File
+
+By default, Go doesn’t load `.env` files like Node.js does.
+We need a package such as [`github.com/joho/godotenv`](https://github.com/joho/godotenv).
+
+### Install:
+
+```sh
+go get github.com/joho/godotenv
+```
+
+### Example:
+
+**.env file**
+
+```env
+DB_USER=root
+DB_PASS=secret
+PORT=8080
+```
+
+**main.go**
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/joho/godotenv"
+)
+
+func main() {
+	// Load .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	// Access variables
+	fmt.Println("DB_USER:", os.Getenv("DB_USER"))
+	fmt.Println("DB_PASS:", os.Getenv("DB_PASS"))
+	fmt.Println("PORT:", os.Getenv("PORT"))
+}
+```
+
+Run:
+
+```sh
+go run main.go
+```
+
+Output:
+
+```
+DB_USER: root
+DB_PASS: secret
+PORT: 8080
+```
+
+---
+
+# 🚀 4. Best Practices
+
+✅ Don’t hardcode secrets in code.
+✅ Use `.env` in **local development**, but in production use system env vars.
+✅ Don’t commit `.env` to GitHub (add to `.gitignore`).
+✅ Provide **default values** if env vars are optional.
+
+---
+
+# 📌 5. Example: Using Environment Variables in Web Server
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+)
+
+func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000" // default fallback
+	}
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Hello from Go! Running on port %s", port)
+	})
+
+	log.Printf("Server starting on port %s...", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
+}
+```
+
+Run:
+
+```sh
+PORT=8080 go run main.go
+```
+
+Output:
+
+```
+Server starting on port 8080...
+```
+
+---
+
+# 🎯 Summary
+
+* `os.Getenv(key)` → get value.
+* `os.Setenv(key, val)` → set value.
+* `os.Unsetenv(key)` → remove variable.
+* `os.Environ()` → list all env vars.
+* Use `godotenv` for `.env` files.
+* Use env vars for **config, secrets, and portability**.
+
+---
+
+Let’s break it down clearly — how **environment variables work in Linux vs Windows**, and how **Go handles them**.
+
+---
+
+# 🌍 1. Environment Variables: Cross-Platform Concept
+
+* Environment variables are just **key–value pairs attached to a process**.
+* When we launch a program, the OS gives it a **copy of the current environment**.
+* The Go runtime (`os` package) provides a **unified API**, so Go code works the same on **Linux, macOS, and Windows**.
+* But the **way we define/set/use environment variables** differs between operating systems.
+
+---
+
+# 🐧 2. Linux/macOS (Unix-like systems)
+
+### ✅ Setting Environment Variables
+
+* **Temporary (only for this session/program):**
+
+```sh
+export DB_USER=root
+export DB_PASS=secret
+go run main.go
+```
+
+* The `export` command makes the variables available to child processes (like our Go app).
+
+* **Inline (just for one command):**
+
+```sh
+DB_USER=root DB_PASS=secret go run main.go
+```
+
+### ✅ Checking Environment Variables
+
+```sh
+echo $DB_USER
+printenv
+env
+```
+
+### ✅ Removing an Environment Variable
+
+```sh
+unset DB_PASS
+```
+
+---
+
+# 🪟 3. Windows
+
+Windows has different syntax depending on **Command Prompt** or **PowerShell**.
+
+### ✅ Setting Environment Variables
+
+* **In Command Prompt (cmd.exe):**
+
+```cmd
+set DB_USER=root
+set DB_PASS=secret
+go run main.go
+```
+
+* **In PowerShell:**
+
+```ps
+$env:DB_USER="root"
+$env:DB_PASS="secret"
+go run main.go
+```
+
+### ✅ Checking Environment Variables
+
+* **cmd.exe**
+
+```cmd
+echo %DB_USER%
+```
+
+* **PowerShell**
+
+```ps
+echo $env:DB_USER
+```
+
+### ✅ Removing an Environment Variable
+
+* **cmd.exe**
+
+```cmd
+set DB_PASS=
+```
+
+* **PowerShell**
+
+```ps
+Remove-Item Env:DB_PASS
+```
+
+---
+
+# 🏗 4. Permanent Environment Variables
+
+* **Linux/macOS** → add to `~/.bashrc`, `~/.zshrc`, or `/etc/environment`
+  Example:
+
+```sh
+export DB_USER=root
+```
+
+* **Windows** → use **System Properties → Environment Variables** GUI, or PowerShell:
+
+```ps
+setx DB_USER "root"
+```
+
+⚠️ `setx` makes it **permanent** but not available until a **new terminal** is opened.
+
+---
+
+# 🔄 5. Go’s Behavior Across Platforms
+
+* **Reading**:
+
+```go
+os.Getenv("DB_USER")
+```
+
+✅ Works the same on Linux, macOS, and Windows.
+
+* **Setting** (inside Go):
+
+```go
+os.Setenv("PORT", "8080")
+```
+
+✅ Affects **only the current process** and any child processes it spawns.
+❌ It will **not persist** after the program exits, on either Linux or Windows.
+
+* **Unsetting**:
+
+```go
+os.Unsetenv("DB_PASS")
+```
+
+✅ Works identically across OS.
+
+* **Listing all environment variables**:
+
+```go
+for _, e := range os.Environ() {
+    fmt.Println(e)
+}
+```
+
+✅ Works the same on both OS.
+
+---
+
+# 🎯 Quick Comparison
+
+| Operation       | Linux/macOS                     | Windows (cmd)    | Windows (PowerShell)  |
+| --------------- | ------------------------------- | ---------------- | --------------------- |
+| Set (temporary) | `export KEY=value`              | `set KEY=value`  | `$env:KEY="value"`    |
+| Inline          | `KEY=value go run main.go`      | ❌ Not supported  | ❌ Not supported       |
+| Get             | `echo $KEY`                     | `echo %KEY%`     | `echo $env:KEY`       |
+| Unset           | `unset KEY`                     | `set KEY=`       | `Remove-Item Env:KEY` |
+| Permanent       | `~/.bashrc`, `/etc/environment` | `setx KEY value` | `setx KEY value`      |
+
+---
+
+✅ **Bottom line:**
+Go itself doesn’t care whether we’re on Linux or Windows — it always uses the same `os.Getenv`, `os.Setenv`, `os.Environ`, etc. The only difference is **how we define/export variables in the shell** before running the program.
+
+---
+
+
