@@ -8617,4 +8617,490 @@ func main() {
 
 ---
 
+JSON is one of the most important things we’ll use in Go, especially for **APIs, configuration, and data exchange**.
+
+---
+
+# 📌 JSON in Golang
+
+JSON (**JavaScript Object Notation**) is a lightweight format for structuring data.
+Go has built-in support for JSON via the **`encoding/json`** package.
+
+---
+
+## 1. 🔹 Importing JSON package
+
+```go
+import "encoding/json"
+```
+
+---
+
+## 2. 🔹 Basic Concepts
+
+* **Marshalling** → Convert Go values (structs, maps, slices) into JSON (bytes/string).
+* **Unmarshalling** → Convert JSON data into Go values.
+
+---
+
+## 3. 🔹 Marshalling (Go → JSON)
+
+We use `json.Marshal` or `json.MarshalIndent`.
+
+### Example:
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+)
+
+type User struct {
+	Name  string `json:"name"`
+	Age   int    `json:"age"`
+	Email string `json:"email"`
+}
+
+func main() {
+	user := User{"Skyy", 29, "skyy@example.com"}
+
+	// Convert struct to JSON
+	data, _ := json.Marshal(user)
+	fmt.Println(string(data)) // {"name":"Skyy","age":29,"email":"skyy@example.com"}
+
+	// Pretty print (indented)
+	pretty, _ := json.MarshalIndent(user, "", "  ")
+	fmt.Println(string(pretty))
+}
+```
+
+✅ Output:
+
+```json
+{
+  "name": "Skyy",
+  "age": 29,
+  "email": "skyy@example.com"
+}
+```
+
+---
+
+## 4. 🔹 Unmarshalling (JSON → Go)
+
+We use `json.Unmarshal`.
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+)
+
+type User struct {
+	Name  string `json:"name"`
+	Age   int    `json:"age"`
+	Email string `json:"email"`
+}
+
+func main() {
+	jsonData := `{"name":"Skyy","age":29,"email":"skyy@example.com"}`
+	var user User
+
+	// Parse JSON into struct
+	err := json.Unmarshal([]byte(jsonData), &user)
+	if err != nil {
+		fmt.Println("Error:", err)
+	}
+	fmt.Println(user.Name, user.Age, user.Email) // Skyy 29 skyy@example.com
+}
+```
+
+---
+
+## 5. 🔹 Struct Tags
+
+* Go uses **struct tags** to control JSON key names.
+* Format: `` `json:"fieldName"` ``
+* Options:
+
+  * `json:"name"` → rename key.
+  * `json:"name,omitempty"` → omit if empty.
+  * `json:"-"` → skip field.
+
+### Example:
+
+```go
+type User struct {
+	Name     string `json:"name"`
+	Age      int    `json:"age,omitempty"`
+	Password string `json:"-"` // ignored
+}
+```
+
+---
+
+## 6. 🔹 JSON with Maps & Slices
+
+If we don’t know the structure, we can use `map[string]interface{}`.
+
+```go
+jsonData := `{"name":"Skyy","age":29,"skills":["Go","React"]}`
+
+var result map[string]interface{}
+json.Unmarshal([]byte(jsonData), &result)
+
+fmt.Println(result["name"])        // Skyy
+fmt.Println(result["skills"])      // [Go React]
+```
+
+⚠️ But `interface{}` means values are stored as generic types:
+
+* Numbers → `float64`
+* Strings → `string`
+* Arrays → `[]interface{}`
+* Objects → `map[string]interface{}`
+
+---
+
+## 7. 🔹 Streaming JSON
+
+For **large data**, we can use:
+
+* `json.NewEncoder(w).Encode(v)` → stream to `io.Writer`
+* `json.NewDecoder(r).Decode(v)` → stream from `io.Reader`
+
+### Example:
+
+```go
+import (
+	"encoding/json"
+	"os"
+)
+
+func main() {
+	user := map[string]string{"name": "Skyy", "role": "developer"}
+	json.NewEncoder(os.Stdout).Encode(user)
+}
+```
+
+---
+
+## 8. 🔹 Handling Unknown JSON
+
+We can unmarshal into `interface{}` when structure is unknown.
+
+```go
+var data interface{}
+json.Unmarshal([]byte(`{"foo":42,"bar":["a","b"]}`), &data)
+
+m := data.(map[string]interface{})
+fmt.Println(m["foo"]) // 42
+```
+
+---
+
+## 9. 🔹 Custom Marshal/Unmarshal
+
+We can control how structs are converted using methods:
+
+* `MarshalJSON() ([]byte, error)`
+* `UnmarshalJSON([]byte) error`
+
+### Example:
+
+```go
+type Age int
+
+func (a Age) MarshalJSON() ([]byte, error) {
+	return []byte(fmt.Sprintf("\"%d years\"", a)), nil
+}
+```
+
+---
+
+## 10. 🔹 Common Pitfalls
+
+1. JSON numbers → Go interprets as `float64` when using `interface{}`.
+2. Field names must be **exported** (start with capital letter) to be marshalled.
+
+   ```go
+   type User struct {
+       name string // not exported → ignored
+   }
+   ```
+3. Always check for errors in Marshal/Unmarshal.
+
+---
+
+## 11. 🔹 Real-World Use Case (API)
+
+```go
+import (
+	"encoding/json"
+	"net/http"
+)
+
+type User struct {
+	Name string `json:"name"`
+	Age  int    `json:"age"`
+}
+
+func handler(w http.ResponseWriter, r *http.Request) {
+	user := User{"Skyy", 29}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(user)
+}
+```
+
+---
+
+# 📌 Summary
+
+* **`json.Marshal`** → Go → JSON
+* **`json.Unmarshal`** → JSON → Go
+* Use **struct tags** to control key names.
+* Unknown JSON → `map[string]interface{}` or `interface{}`.
+* Use **Encoder/Decoder** for streaming.
+* JSON in Go is strongly tied to **exported fields**.
+
+---
+
+# 📌 Struct Tags in Go
+
+Struct tags are **metadata annotations** attached to struct fields.
+They help external packages (like `encoding/json`, ORMs, validation libraries, etc.) understand **how to process struct fields**.
+
+---
+
+## 1. 🔹 Basic Syntax
+
+```go
+type User struct {
+    Name  string `json:"name"`
+    Age   int    `json:"age,omitempty"`
+    Email string `json:"email" db:"email_address"`
+}
+```
+
+👉 Syntax rules:
+
+* Tags are **raw string literals** enclosed in backticks: `` `...` ``
+* They are **key:"value"** pairs, separated by spaces if multiple.
+* **Exported fields only** (fields starting with a capital letter) are affected by tags.
+
+---
+
+## 2. 🔹 Why Use Struct Tags?
+
+* Control **serialization/deserialization** (JSON, XML, YAML).
+* Work with **databases** (e.g., GORM, SQLx).
+* Define **validation rules** (with `validator` package).
+* Provide **metadata** for reflection-based libraries.
+
+---
+
+## 3. 🔹 JSON Struct Tags
+
+The most common example is with `encoding/json`.
+
+```go
+type User struct {
+    FullName string `json:"full_name"`
+    Age      int    `json:"age,omitempty"`
+    Password string `json:"-"` // ignored
+}
+```
+
+Rules:
+
+* `json:"full_name"` → use `full_name` instead of `FullName` in JSON.
+* `json:"age,omitempty"` → omit if zero value (0, "", nil).
+* `json:"-"` → completely ignore field.
+
+### Example:
+
+```go
+u := User{"Skyy", 0, "secret"}
+b, _ := json.Marshal(u)
+fmt.Println(string(b)) 
+// {"full_name":"Skyy"} → Age omitted, Password skipped
+```
+
+---
+
+## 4. 🔹 Multiple Tags
+
+We can define multiple tags on the same field.
+
+```go
+type User struct {
+    Name  string `json:"name" xml:"name" db:"username"`
+    Email string `json:"email" validate:"required,email"`
+}
+```
+
+Here:
+
+* JSON uses `"name"`.
+* XML uses `"name"`.
+* Database ORM maps to `username`.
+* Validator ensures email is required and valid.
+
+---
+
+## 5. 🔹 Accessing Struct Tags with Reflection
+
+Go’s **`reflect`** package lets us read tags at runtime.
+
+```go
+import (
+    "fmt"
+    "reflect"
+)
+
+type User struct {
+    Name string `json:"name" db:"username"`
+}
+
+func main() {
+    t := reflect.TypeOf(User{})
+    field, _ := t.FieldByName("Name")
+    fmt.Println(field.Tag.Get("json")) // name
+    fmt.Println(field.Tag.Get("db"))   // username
+}
+```
+
+👉 `.Tag.Get("json")` gives us the value of the `json` tag.
+
+---
+
+## 6. 🔹 Common Uses of Struct Tags
+
+### ✅ JSON/YAML/XML
+
+Control serialization.
+
+```go
+type Config struct {
+    Host string `json:"host" yaml:"host"`
+    Port int    `json:"port" yaml:"port"`
+}
+```
+
+### ✅ Database ORMs
+
+GORM, SQLx, etc. use struct tags for schema mapping.
+
+```go
+type Product struct {
+    ID    int    `gorm:"primaryKey;autoIncrement"`
+    Name  string `gorm:"size:255;not null"`
+    Price int    `db:"price"`
+}
+```
+
+### ✅ Validation
+
+```go
+type User struct {
+    Email string `validate:"required,email"`
+    Age   int    `validate:"gte=18"`
+}
+```
+
+### ✅ Protobuf/GraphQL/Other Libraries
+
+Struct tags define mappings for serialization/deserialization.
+
+---
+
+## 7. 🔹 Rules and Gotchas
+
+1. **Only applies to exported fields**
+
+   ```go
+   type User struct {
+       name string `json:"name"` // ignored (lowercase field)
+   }
+   ```
+
+2. **OmitEmpty works only on zero values**
+
+   * Numbers → 0
+   * Strings → ""
+   * Pointers/interfaces → nil
+   * Arrays/slices/maps → len=0
+
+3. **Multiple tags must be space-separated**
+
+   ```go
+   `json:"name" db:"username"`
+   ```
+
+4. **Invalid tags are ignored silently**
+   Go won’t throw errors, libraries just won’t recognize them.
+
+---
+
+## 8. 🔹 Custom Struct Tags
+
+We can create **our own tags** for internal use.
+
+```go
+type User struct {
+    Name string `mytag:"important"`
+}
+```
+
+Read via reflection:
+
+```go
+field, _ := reflect.TypeOf(User{}).FieldByName("Name")
+fmt.Println(field.Tag.Get("mytag")) // important
+```
+
+---
+
+## 9. 🔹 Real-World Example
+
+API struct:
+
+```go
+type User struct {
+    ID        int    `json:"id" db:"id"`
+    FirstName string `json:"first_name" db:"first_name"`
+    LastName  string `json:"last_name" db:"last_name"`
+    Email     string `json:"email" db:"email" validate:"required,email"`
+    Password  string `json:"-"` // not exposed
+}
+```
+
+* JSON API → converts field names to snake\_case.
+* Database ORM → maps struct fields to DB columns.
+* Validator → ensures email is valid.
+* Password → excluded from JSON response.
+
+---
+
+# 📌 Summary
+
+* Struct tags = **metadata** for struct fields.
+* Written inside backticks: `` `json:"name,omitempty" db:"username"` ``
+* Used by packages like **encoding/json, database ORMs, validators**.
+* Accessed at runtime using **reflection**.
+* Rules:
+
+  * Exported fields only.
+  * Multiple tags allowed, space-separated.
+  * `"omitempty"` and `"-"` modify behavior.
+
+---
+
+
+
+
 
