@@ -1,0 +1,105 @@
+package main
+
+import (
+	"encoding/xml"
+	"fmt"
+	"log"
+)
+
+type Person struct {
+	XMLName xml.Name `xml:"person"` // root
+	Name string `xml:"name,omitempty"`
+	Age int `xml:"age,omitempty"`
+	City string `xml:"city,omitempty"`
+	Address Address `xml:"address,omitempty"`
+	Email string `xml:"email,omitempty"`
+}
+
+
+type Pokemon struct {
+	XMLName xml.Name `xml:"pokemon"` // root
+	Name string `xml:"name,omitempty"`
+	Number int `xml:"number,omitempty"`
+	PType string `xml:"type,omitempty"`
+	EvolvedFrom string `xml:"-"`
+
+}
+
+type Address struct {
+	City string  `xml:"city,omitempty"`
+	State string  `xml:"state,omitempty"`
+}
+
+func main() {
+	skyy := Person{Name:"Skyy", Age:29, Address: Address{City: "CCU", State: "WB"}, Email: "skyy@example.com"}
+	skyyXML,err:=xml.Marshal(skyy)
+	if err!=nil{
+		log.Fatal("🔴ERROR marshalling data into XML:",err)
+	}
+
+	fmt.Println("XML Data:",string(skyyXML))
+	fmt.Println("------- BETTER READABILITY -------")
+	skyyXML1,err:=xml.MarshalIndent(skyy,"", " ")
+	if err!=nil{
+		log.Fatal("🔴ERROR marshalling data into XML:",err)
+	}
+	fmt.Println("XML Data with indentation:\n",string(skyyXML1))
+
+	fmt.Println("\n---------- UNMARSHALLING ----------")
+
+	xmlRaw:=`<pokemon><name>Flareon</name><number>136</number><EvolvedFrom>Evee</EvolvedFrom></pokemon>`
+
+	xmlRaw1:=`<person>
+ <name>Soumadip</name>
+ <age>35</age>
+ <address>
+  <city>Munich</city>
+  <state>BAVARIA</state>
+ </address>
+ <email>soumadip@example.com</email>
+</person>`
+
+	var flareonXML Pokemon
+	err = xml.Unmarshal([]byte(xmlRaw), &flareonXML)
+	if err!=nil{
+		log.Fatal("🔴ERROR unmarshalling data from XML:",err)
+	}
+	fmt.Println("Data from XML:",flareonXML)
+
+	var soumadipXML Person
+	err = xml.Unmarshal([]byte(xmlRaw1), &soumadipXML)
+	if err!=nil{
+		log.Fatal("🔴ERROR unmarshalling data from XML:",err)
+	}
+	fmt.Println("Data from XML:",soumadipXML)
+
+	//local namespace
+	fmt.Println("\nLocal:",soumadipXML.XMLName.Local)
+	fmt.Println("NameSpace:",soumadipXML.XMLName.Space)
+
+	fmt.Println("\n---------- ATTRIBUTES ----------")
+	ash:=Trainer{
+		Name: "Ash Ketchum 🧢",
+		Hometown: "Pallet Town",
+		FavPokemon: "Pikachu ⚡",
+		Pseudo: "Pseudo",
+		PseudoAttr:"Pseudo Attribute",
+	}
+
+	ashXMLAttr,err:=xml.MarshalIndent(ash,"*"," ")
+	if err!=nil{
+		log.Fatal("🔴ERROR marshalling data into XML:",err)
+	}
+	fmt.Println("XML Data with atributes:\n",string(ashXMLAttr))
+}
+
+type Trainer struct{
+	XMLName xml.Name `xml:"trainer"`
+	Name string `xml:"trainer_name,attr"`
+	Hometown string `xml:"hometown,attr"`
+	FavPokemon string `xml:"fav_pokemon,attr"`
+	Pseudo string `xml:"pseudo"`
+	PseudoAttr string `xml:"pseudoAttr,attr"`
+}
+
+//!attr: <trainer name="Ash Kethcum" hometown="Pallet Town">

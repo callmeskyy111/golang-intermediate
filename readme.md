@@ -9100,7 +9100,478 @@ type User struct {
 
 ---
 
+Go has the standard package **`encoding/xml`**, similar to `encoding/json`, that lets us encode (marshal) and decode (unmarshal) XML data.
 
+---
+
+# 📌 XML in Go (`encoding/xml`)
+
+## 🔹 Import
+
+```go
+import "encoding/xml"
+```
+
+---
+
+## 🔹 Core Functions
+
+Just like JSON:
+
+* `xml.Marshal(v interface{}) ([]byte, error)`
+  → Go value → XML (`[]byte`).
+* `xml.Unmarshal(data []byte, v interface{}) error`
+  → XML (`[]byte`) → Go value.
+* `xml.MarshalIndent(v interface{}, prefix, indent string)`
+  → Pretty-print XML.
+
+---
+
+## 🔹 Struct Tags for XML
+
+Struct tags control how XML is generated/parsed.
+
+Syntax:
+
+```go
+`xml:"tagName,option"`
+```
+
+### Common Options:
+
+* `xml:"name"` → element name in XML
+* `xml:"-"` → ignore this field
+* `xml:"attr"` → encode field as **XML attribute**
+* `xml:",chardata"` → field stores the **text inside an element**
+* `xml:",innerxml"` → raw inner XML (not parsed)
+* `xml:",omitempty"` → omit empty fields
+* `xml:",comment"` → encodes field as a comment
+
+---
+
+## 🔹 Example 1: Basic Marshalling
+
+```go
+package main
+
+import (
+	"encoding/xml"
+	"fmt"
+)
+
+type Person struct {
+	XMLName xml.Name `xml:"person"`
+	Name    string   `xml:"name"`
+	Age     int      `xml:"age"`
+	Email   string   `xml:"email,omitempty"`
+}
+
+func main() {
+	john := Person{Name: "John Doe", Age: 30, Email: "john@example.com"}
+
+	// Marshal struct → XML
+	xmlData, err := xml.MarshalIndent(john, "", "  ")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	fmt.Println(string(xmlData))
+}
+```
+
+### 🔹 Output:
+
+```xml
+<person>
+  <name>John Doe</name>
+  <age>30</age>
+  <email>john@example.com</email>
+</person>
+```
+
+---
+
+## 🔹 Example 2: Unmarshalling
+
+```go
+func main() {
+	data := []byte(`
+	<person>
+	  <name>John Doe</name>
+	  <age>30</age>
+	  <email>john@example.com</email>
+	</person>`)
+
+	var john Person
+	err := xml.Unmarshal(data, &john)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	fmt.Printf("Struct: %+v\n", john)
+}
+```
+
+### 🔹 Output:
+
+```
+Struct: {XMLName:{Space: Local:person} Name:John Doe Age:30 Email:john@example.com}
+```
+
+---
+
+## 🔹 Example 3: Attributes
+
+```go
+type Book struct {
+	XMLName xml.Name `xml:"book"`
+	Title   string   `xml:"title"`
+	Author  string   `xml:"author"`
+	ID      string   `xml:"id,attr"` // attribute instead of element
+}
+```
+
+Instance:
+
+```go
+book := Book{Title: "Go in Action", Author: "John Doe", ID: "101"}
+data, _ := xml.MarshalIndent(book, "", "  ")
+fmt.Println(string(data))
+```
+
+Output:
+
+```xml
+<book id="101">
+  <title>Go in Action</title>
+  <author>John Doe</author>
+</book>
+```
+
+---
+
+## 🔹 Example 4: Nested Structs & Slices
+
+```go
+type Library struct {
+	XMLName xml.Name `xml:"library"`
+	Books   []Book   `xml:"book"`
+}
+
+type Book struct {
+	Title  string `xml:"title"`
+	Author string `xml:"author"`
+}
+```
+
+Input XML:
+
+```xml
+<library>
+  <book>
+    <title>Go Programming</title>
+    <author>Alan Donovan</author>
+  </book>
+  <book>
+    <title>Go in Action</title>
+    <author>John Doe</author>
+  </book>
+</library>
+```
+
+Unmarshal:
+
+```go
+var lib Library
+_ = xml.Unmarshal([]byte(xmlStr), &lib)
+fmt.Printf("%+v\n", lib)
+```
+
+---
+
+## 🔹 Special Struct Tags
+
+* **Inner XML**
+
+```go
+type Note struct {
+	To   string `xml:"to"`
+	Body string `xml:",innerxml"`
+}
+```
+
+If XML:
+
+```xml
+<note>
+  <to>Alice</to>
+  <body><b>Hello</b>, World!</body>
+</note>
+```
+
+The `Body` field will contain `<b>Hello</b>, World!` as raw string.
+
+* **Char Data**
+
+```go
+type Message struct {
+	Body string `xml:",chardata"`
+}
+```
+
+If XML:
+
+```xml
+<message>Hello World</message>
+```
+
+Then `Body = "Hello World"`.
+
+* **Comments**
+
+```go
+type Comment struct {
+	Text string `xml:",comment"`
+}
+```
+
+---
+
+## 🔹 Streaming with Encoder/Decoder
+
+For **large XML files**, instead of `Marshal/Unmarshal`, we can use **`xml.Encoder`** and **`xml.Decoder`** to stream.
+
+Example:
+
+```go
+import (
+	"encoding/xml"
+	"os"
+)
+
+type Item struct {
+	Name string `xml:"name"`
+}
+
+func main() {
+	// Encode
+	encoder := xml.NewEncoder(os.Stdout)
+	item := Item{Name: "Laptop"}
+	encoder.Encode(item)
+
+	// Decode
+	xmlData := `<Item><name>Laptop</name></Item>`
+	decoder := xml.NewDecoder(strings.NewReader(xmlData))
+	var decoded Item
+	decoder.Decode(&decoded)
+}
+```
+
+---
+
+# ✅ Summary
+
+* Use `encoding/xml` (similar to `encoding/json`).
+* `xml.Marshal`, `xml.Unmarshal` for basic usage.
+* Tags (`xml:"tagName,attr,omitempty"`) control how struct maps to XML.
+* Supports attributes, nested structs, slices, inner XML, comments, etc.
+* Use **Encoder/Decoder** for large files (streaming).
+* Great for **APIs, configs, or legacy systems** that use XML.
+
+---
+
+Now.. Let’s compare **JSON vs XML handling in Go** in detail.
+
+---
+
+# 📌 JSON vs XML in Go
+
+Both are supported in Go via standard packages:
+
+* **`encoding/json`**
+* **`encoding/xml`**
+
+They share a lot of concepts but have key differences in **representation, struct tags, and use cases**.
+
+---
+
+## 🔹 1. Import
+
+```go
+import "encoding/json"
+import "encoding/xml"
+```
+
+---
+
+## 🔹 2. Marshalling (Go struct → JSON/XML)
+
+### JSON
+
+```go
+type Person struct {
+	Name  string `json:"name"`
+	Age   int    `json:"age"`
+	Email string `json:"email,omitempty"`
+}
+```
+
+Output:
+
+```json
+{
+  "name": "Alice",
+  "age": 25,
+  "email": "alice@example.com"
+}
+```
+
+---
+
+### XML
+
+```go
+type Person struct {
+	XMLName xml.Name `xml:"person"`
+	Name    string   `xml:"name"`
+	Age     int      `xml:"age"`
+	Email   string   `xml:"email,omitempty"`
+}
+```
+
+Output:
+
+```xml
+<person>
+  <name>Alice</name>
+  <age>25</age>
+  <email>alice@example.com</email>
+</person>
+```
+
+---
+
+## 🔹 3. Struct Tags Differences
+
+| Feature                 | JSON                     | XML                     |
+| ----------------------- | ------------------------ | ----------------------- |
+| Rename field            | `json:"username"`        | `xml:"username"`        |
+| Ignore field            | `json:"-"`               | `xml:"-"`               |
+| Omit empty fields       | `json:"field,omitempty"` | `xml:"field,omitempty"` |
+| Use attributes          | ❌ Not supported          | `xml:"id,attr"`         |
+| Raw inner data          | ❌ Not supported          | `xml:",innerxml"`       |
+| Raw text inside element | ❌ Not supported          | `xml:",chardata"`       |
+| Comments                | ❌ Not supported          | `xml:",comment"`        |
+
+👉 JSON is simpler: key-value only.
+👉 XML is richer: can do attributes, nested elements, inner text, etc.
+
+---
+
+## 🔹 4. Unmarshalling (JSON/XML → Go struct)
+
+Both work similarly:
+
+```go
+json.Unmarshal(jsonData, &obj)
+xml.Unmarshal(xmlData, &obj)
+```
+
+---
+
+## 🔹 5. Encoding/Decoding Streams
+
+Both support streaming:
+
+* `json.NewEncoder(writer).Encode(obj)`
+* `xml.NewEncoder(writer).Encode(obj)`
+
+and
+
+* `json.NewDecoder(reader).Decode(&obj)`
+* `xml.NewDecoder(reader).Decode(&obj)`
+
+Useful for **large files or network streams**.
+
+---
+
+## 🔹 6. Readability & Size
+
+* **JSON**
+
+  * More compact
+  * Easier to read for humans
+  * Smaller payloads
+  * Popular in modern APIs (REST, GraphQL, etc.)
+
+* **XML**
+
+  * Verbose, larger in size
+  * Harder for humans to scan quickly
+  * Supports attributes, comments, nested text → more descriptive
+  * Still common in **legacy systems, SOAP APIs, configuration files**
+
+---
+
+## 🔹 7. Example Comparison
+
+### JSON
+
+```json
+{
+  "id": "101",
+  "title": "Go in Action",
+  "author": "John Doe"
+}
+```
+
+### XML
+
+```xml
+<book id="101">
+  <title>Go in Action</title>
+  <author>John Doe</author>
+</book>
+```
+
+👉 Notice XML supports **attributes (`id="101"`)**, while JSON does not.
+
+---
+
+## 🔹 8. Performance
+
+* **JSON**: Faster, smaller payload, better for web APIs.
+* **XML**: Slower, larger, but more flexible with complex data.
+
+Benchmarks in Go typically show **`encoding/json` > `encoding/xml`** in speed.
+That’s why **most modern Go APIs use JSON**.
+
+---
+
+# ✅ Summary
+
+* **JSON**:
+
+  * Lightweight, fast, compact.
+  * Struct tags: `json:"field,omitempty"`.
+  * Best for web APIs, microservices, mobile apps.
+
+* **XML**:
+
+  * Verbose, rich metadata, supports attributes & inner text.
+  * Struct tags: `xml:"field,attr,omitempty"`.
+  * Best for configs, legacy systems, SOAP, scientific data.
+
+---
+
+👉 Rule of thumb:
+
+* Use **JSON** if we control the API or working with modern services.
+* Use **XML** if we’re **interfacing with legacy APIs, enterprise systems, or config formats**.
+
+---
 
 
 
