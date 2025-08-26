@@ -1,4 +1,4 @@
-# Intermediate Golang Concepts🔵
+# INTERMEDIATE GOLANG CONCEPTS🔵
 _Curated with 💖 by [Soumadip "Skyy" Banerjee 👨🏻‍💻](https://www.instagram.com/iamskyy666/)_
 
 
