@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"path/filepath"
 	"strings"
 )
 
@@ -52,6 +53,27 @@ func multiReaderExample(){
 	fmt.Println("Data/Bufs:",buf.String())
 }
 
+// pipes
+// Connecting 2 peices of code so that once can travel from the other like a tunnel
+// r - from where it will be read
+// w - to where data will be written
+
+func pipeExample(){
+	pr,pw:=io.Pipe()
+	// goroutine - extracting the fx out of the main thread and executed seperately, anonymously
+	go func(){
+		pw.Write([]byte("Hello Pipe"))
+		pw.Close()
+	}()
+
+	// create buffer
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(pr)
+	fmt.Println(buf.String())
+}
+
+func writeToFile(filepath string, data string){}
+
 
 func main() {
 
@@ -69,6 +91,9 @@ func main() {
 
 	fmt.Println("\n====== MULTI-READER EXAMPLE =======")
 	multiReaderExample()
+
+	fmt.Println("\n====== READING/WRITING PIPE =======")
+	pipeExample()
 
 
 
