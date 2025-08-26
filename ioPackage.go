@@ -1,11 +1,13 @@
 package main
 
+// file: ioPackage.go
+
 import (
 	"bytes"
 	"fmt"
 	"io"
 	"log"
-	"path/filepath"
+	"os"
 	"strings"
 )
 
@@ -72,7 +74,29 @@ func pipeExample(){
 	fmt.Println(buf.String())
 }
 
-func writeToFile(filepath string, data string){}
+func writeToFile(filepath string, data string){
+	file,err:= os.OpenFile(filepath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil{
+		log.Fatalln("🔴ERROR opening/creating file:",err)
+	}
+
+	defer closeResource(file)
+
+	_,err = file.Write([]byte(data))
+	if err != nil{
+		log.Fatalln("🔴ERROR writing file:",err)
+	}
+
+	//! Alt. Code
+	// conversion : Type(value)
+	// writer:= io.Writer(file)
+	// write to it
+	// _,err=writer.Write([]byte(data))
+	// if err != nil{
+	// 	log.Fatalln("🔴ERROR writing:",err)
+	// }
+	
+}
 
 
 func main() {
@@ -95,6 +119,43 @@ func main() {
 	fmt.Println("\n====== READING/WRITING PIPE =======")
 	pipeExample()
 
+	fmt.Println("\n====== WRITE TO FILE =======")
+	filePath:="io.txt"
+	writeToFile(filePath,"Hello File\n")
 
+	fmt.Println("\n====== IMPLEMENTING IO.CLOSER =======")
+	resource:= &MyResource{name:"testingResource"}
+	closeResource(resource)
 
 }
+
+type MyResource struct{
+	name string
+}
+
+// io.Closer interface's close method implementation
+func (m MyResource) Close()error{
+	fmt.Println("Closing resource!",m.name)
+	return nil
+}
+
+// OUTPUT:
+// ====== READ FROM READER =======
+// Data: random str. to be read
+
+// ====== WRITE TO WRITER =======
+// random str. to be written to WRITER
+
+// ====== BUFFER EXAMPLE =======
+// Hello Buffer!
+
+// ====== MULTI-READER EXAMPLE =======
+// Data/Bufs: Hey World
+
+// ====== READING/WRITING PIPE =======
+// Hello Pipe
+
+// ====== WRITE TO FILE =======
+
+// ====== IMPLEMENTING IO.CLOSER =======
+// Closing resource! testingResource
